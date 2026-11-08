@@ -3,10 +3,15 @@
 class CreateStash < ActiveRecord::Migration[8.1]
   def change
     # Locally the schema does not exist yet. When deployed the infra module creates it, and the
-    # app's role owns it. Either way, every table below lands in "stash" (schema_search_path).
-    # safety_assured: creating a schema that may exist locks nothing.
+    # app's role owns it but has no CREATE right on the database. Postgres checks that right
+    # before it looks at IF NOT EXISTS, so only create the schema when it is missing. Either way,
+    # every table below lands in "stash" (schema_search_path).
+    # safety_assured: creating a schema that does not exist locks nothing.
     reversible do |dir|
-      dir.up { safety_assured { execute "CREATE SCHEMA IF NOT EXISTS stash" } }
+      dir.up do
+        exists = select_value("SELECT 1 FROM pg_namespace WHERE nspname = 'stash'")
+        safety_assured { execute "CREATE SCHEMA stash" } unless exists
+      end
     end
     enable_extension "pgcrypto"
 
