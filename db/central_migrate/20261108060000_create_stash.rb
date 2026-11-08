@@ -13,7 +13,8 @@ class CreateStash < ActiveRecord::Migration[8.1]
         safety_assured { execute "CREATE SCHEMA stash" } unless exists
       end
     end
-    enable_extension "pgcrypto"
+    # No pgcrypto: Postgres 13 and later has gen_random_uuid() built in, and the app's role has
+    # no CREATE right on the central database to add extensions.
 
     # Active Storage, with UUID keys. The same tables that active_storage:install makes.
     create_table :active_storage_blobs, id: :uuid do |t|
