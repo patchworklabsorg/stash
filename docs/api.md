@@ -24,7 +24,7 @@ Content-Type: application/json
 {
   "url": "https://github.com/someone/project",
   "note": "Ganymede submission by PWL5A1B2C3D4",
-  "reference": { "patch": "ganymede", "submission": "sub_4k8xJm2pN9qW" }
+  "reference": { "patch": "ganymede", "submission": "<the patch app's own submission id>" }
 }
 ```
 
@@ -55,7 +55,7 @@ GET /api/v1/archives/arc_4k8xJm2pN9qW
   "normalized_url": "https://github.com/someone/project",
   "host": "github.com",
   "kind": "repo",
-  "reference": { "patch": "ganymede", "submission": "sub_4k8xJm2pN9qW" },
+  "reference": { "patch": "ganymede", "submission": "krater-submission-123" },
   "note": "Ganymede submission by PWL5A1B2C3D4",
   "created_at": "2026-11-08T05:00:00Z",
   "completed_at": "2026-11-08T05:01:12Z",
@@ -77,7 +77,7 @@ GET /api/v1/archives/arc_4k8xJm2pN9qW
 
 `status` is one of `queued`, `running`, `done`, `partial` (some captures failed), `failed`. Poll until `completed_at` is set. A capture's `status` is `queued`, `running`, `done`, `failed` or `skipped`.
 
-`download_url` needs a signed-in person: it is a Stash page URL that redirects to a short-lived storage URL. An app that needs the bytes should ask for that later; today the API gives the checksums and the sizes.
+`download_url` needs a signed-in person: it is a Stash page URL that redirects to a short-lived storage URL. An app that needs the bytes should ask for that later; today the API gives the checksums and the sizes. Page URLs hold the id without its prefix (`/archives/4k8xJm2pN9qW`); the API accepts both forms.
 
 An unknown id answers `404 {"error":"not_found"}`.
 

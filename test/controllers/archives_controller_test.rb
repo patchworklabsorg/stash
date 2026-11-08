@@ -113,10 +113,27 @@ class ArchivesControllerTest < ActionDispatch::IntegrationTest
     assert_equal archive.url, event.details["url"]
   end
 
-  test "an unknown id is 404" do
+  test "an unknown id, a raw UUID and a numeric id are 404" do
+    archive = create_archive
     sign_in_as(:viewer)
 
-    get archive_path("arc_nope")
+    get archive_path("nope")
     assert_response :not_found
+
+    get archive_path(archive.id)
+    assert_response :not_found
+
+    get archive_path(1)
+    assert_response :not_found
+
+    get archive_path(archive.public_id)
+    assert_response :success
+  end
+
+  test "routes hold the encoded id without the prefix" do
+    archive = create_archive
+
+    assert_equal "/archives/#{archive.encoded_id}", archive_path(archive)
+    assert_not_includes archive_path(archive), "arc_"
   end
 end

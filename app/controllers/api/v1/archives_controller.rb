@@ -20,7 +20,7 @@ module Api
       end
 
       def show
-        archive = Archive.includes(captures: { artifacts: { file_attachment: :blob } }).find_by_public_id!(params[:id])
+        archive = Archive.includes(captures: { artifacts: { file_attachment: :blob } }).find_by_public_param!(params[:id])
         render json: ArchiveSerializer.new(archive).as_json
       end
 

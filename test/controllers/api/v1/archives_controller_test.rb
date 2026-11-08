@@ -112,16 +112,19 @@ class Api::V1::ArchivesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "page", capture["method"]
     art = capture["artifacts"].sole
     assert_equal artifact.public_id, art["id"]
-    assert_includes art["download_url"], "/artifacts/#{artifact.public_id}"
+    assert_includes art["download_url"], "/artifacts/#{artifact.encoded_id}"
   end
 
-  test "show for an unknown id is 404" do
+  test "show for an unknown id or a raw UUID is 404" do
+    archive = create_archive
     with_fake_weave do
       stub_introspection(token: TOKEN, scope: "stash")
       get api_v1_archive_path("arc_nope"), headers: { "Authorization" => "Bearer #{TOKEN}" }
-    end
+      assert_response :not_found
 
-    assert_response :not_found
+      get api_v1_archive_path(archive.id), headers: { "Authorization" => "Bearer #{TOKEN}" }
+      assert_response :not_found
+    end
   end
 
   test "index lists the archives of a URL" do

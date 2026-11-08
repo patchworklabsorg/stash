@@ -79,4 +79,4 @@ Patch apps use the API with a Weave `client_credentials` token with the scope `s
 
 Stash uses `patchwork-central`, schema `stash`. Models inherit `CentralRecord`. Migrations go in `db/central_migrate`. Stash stores a requester's Weave `sub` only, never a name or email.
 
-Every record has a public id: `arc_` archives, `cap_` captures, `art_` artifacts. Nothing exposes a database id.
+Every record has a public id: `arc_` archives, `cap_` captures, `art_` artifacts, `aud_` audit events. Routes hold the encoded id without the prefix; the pages and the API show the full id. Nothing exposes a database id.

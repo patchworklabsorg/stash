@@ -61,7 +61,7 @@ class ArchivesController < ApplicationController
   private
 
   def set_archive
-    @archive = Archive.find_by_public_id!(params[:id])
+    @archive = Archive.find_by_public_param!(params[:id])
   end
 
   def archive_params
