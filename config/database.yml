@@ -1,0 +1,62 @@
+# PostgreSQL for all environments (with Row Level Security support)
+# Ensure PostgreSQL is running locally for development
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  prepared_statements: true
+  advisory_locks: true
+  url: <%= ENV['DATABASE_URL'] %>
+
+development:
+  primary: &primary_development
+    <<: *default
+    database: stash_development
+  queue:
+    <<: *primary_development
+    database: stash_queue_development
+    migrations_paths: db/queue_migrate
+  cache:
+    <<: *primary_development
+    database: stash_cache_development
+    migrations_paths: db/cache_migrate
+  cable:
+    <<: *primary_development
+    database: stash_cable_development
+    migrations_paths: db/cable_migrate
+
+test:
+  primary: &primary_test
+    <<: *default
+    database: stash_test
+  queue:
+    <<: *primary_test
+    database: stash_queue_test
+    migrations_paths: db/queue_migrate
+  cache:
+    <<: *primary_test
+    database: stash_cache_test
+    migrations_paths: db/cache_migrate
+  cable:
+    <<: *primary_test
+    database: stash_cable_test
+    migrations_paths: db/cable_migrate
+
+production:
+  primary: &primary_production
+    <<: *default
+    database: stash_production
+    username: stash
+    password: <%= ENV["STASH_DATABASE_PASSWORD"] %>
+  queue:
+    <<: *primary_production
+    database: stash_queue_production
+    migrations_paths: db/queue_migrate
+  cache:
+    <<: *primary_production
+    database: stash_cache_production
+    migrations_paths: db/cache_migrate
+  cable:
+    <<: *primary_production
+    database: stash_cable_production
+    migrations_paths: db/cable_migrate

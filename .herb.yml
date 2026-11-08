@@ -1,0 +1,21 @@
+linter:
+  enabled: true
+  failLevel: error
+  exclude:
+    - 'node_modules/**'
+  rules:
+    html-tag-name-lowercase:
+      severity: error
+    html-attribute-double-quotes:
+      severity: error
+    html-img-require-alt:
+      severity: error
+    erb-require-trailing-newline:
+      severity: error
+    erb-prefer-direct-output:
+      severity: warning
+
+formatter:
+  enabled: true
+  indentWidth: 2
+  maxLineLength: 120
