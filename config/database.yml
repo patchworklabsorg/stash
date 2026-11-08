@@ -1,62 +1,50 @@
-# PostgreSQL for all environments (with Row Level Security support)
-# Ensure PostgreSQL is running locally for development
+# Stash has no database of its own. It uses one central Patchwork database:
+#
+#   central  patchwork-central  general data: archives, captures, artifacts, audit events
+#
+# Stash never connects to patchwork-central-restricted. Archives are internal, not confidential
+# in the way money or identity documents are. In the database, Stash owns the "stash" schema.
+# GoodJob's tables and Active Storage's tables live there too.
+# The "central" connection is the only one, so it is also the primary connection. Models still
+# inherit CentralRecord, to match Selvage and to state where the data lives.
+
 default: &default
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  prepared_statements: true
-  advisory_locks: true
-  url: <%= ENV['DATABASE_URL'] %>
+  schema_search_path: stash
+
+local: &local
+  <<: *default
+  host: <%= ENV.fetch("DATABASE_HOST", "localhost") %>
+  port: <%= ENV.fetch("DATABASE_PORT", 5436) %>
+  username: <%= ENV.fetch("DATABASE_USERNAME", "stash") %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD", "stash") %>
 
 development:
-  primary: &primary_development
-    <<: *default
-    database: stash_development
-  queue:
-    <<: *primary_development
-    database: stash_queue_development
-    migrations_paths: db/queue_migrate
-  cache:
-    <<: *primary_development
-    database: stash_cache_development
-    migrations_paths: db/cache_migrate
-  cable:
-    <<: *primary_development
-    database: stash_cable_development
-    migrations_paths: db/cable_migrate
+  central:
+    <<: *local
+    database: patchwork_central_development
+    migrations_paths: db/central_migrate
+    schema_dump: central_schema.rb
 
 test:
-  primary: &primary_test
-    <<: *default
-    database: stash_test
-  queue:
-    <<: *primary_test
-    database: stash_queue_test
-    migrations_paths: db/queue_migrate
-  cache:
-    <<: *primary_test
-    database: stash_cache_test
-    migrations_paths: db/cache_migrate
-  cable:
-    <<: *primary_test
-    database: stash_cable_test
-    migrations_paths: db/cable_migrate
+  central:
+    <<: *local
+    database: patchwork_central_test
+    migrations_paths: db/central_migrate
+    schema_dump: central_schema.rb
 
-production:
-  primary: &primary_production
+# In production and staging the infra module creates the "stash" schema, and Stash's role owns it.
+# schema_dump: false makes db:migrate run the migrations in that schema on the first start.
+# With a dump file, Rails 8.1 loads db/central_schema.rb into an empty database instead, and its
+# CREATE SCHEMA stash fails because the schema exists. See docs/deploy.md.
+production: &deployed
+  central:
     <<: *default
-    database: stash_production
-    username: stash
-    password: <%= ENV["STASH_DATABASE_PASSWORD"] %>
-  queue:
-    <<: *primary_production
-    database: stash_queue_production
-    migrations_paths: db/queue_migrate
-  cache:
-    <<: *primary_production
-    database: stash_cache_production
-    migrations_paths: db/cache_migrate
-  cable:
-    <<: *primary_production
-    database: stash_cable_production
-    migrations_paths: db/cable_migrate
+    url: <%= ENV["CENTRAL_DATABASE_URL"] %>
+    migrations_paths: db/central_migrate
+    schema_dump: false
+
+# Staging uses the same settings. Its CENTRAL_DATABASE_URL points at the staging cluster (hem).
+staging: *deployed

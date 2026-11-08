@@ -1,8 +1,17 @@
 #!/bin/bash -e
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
-  ./bin/rails db:prepare
-fi
+# The entrypoint of the Stash image.
+#
+# When the command is the web server, it runs the database migrations first. Stash uses
+# db:migrate, not db:prepare: the database and the "stash" schema already exist in
+# patchwork-central, and Stash's role cannot create them. On an empty schema, db:prepare would
+# load db/central_schema.rb, which runs CREATE SCHEMA stash and fails because the schema exists.
+# The migrations run in the existing schema. The worker (bundle exec good_job start) does not migrate.
 
-exec "${@}"
+case "$1 $2" in
+  "./bin/rails server" | "bin/rails server")
+    ./bin/rails db:migrate
+    ;;
+esac
+
+exec "$@"

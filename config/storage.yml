@@ -1,0 +1,27 @@
+# Where Active Storage keeps the artifacts. The environment files pick the service:
+# development uses local, test uses test, production and staging use STASH_STORAGE_SERVICE (default s3).
+test:
+  service: Disk
+  root: <%= Rails.root.join("tmp/storage") %>
+
+local:
+  service: Disk
+  root: <%= Rails.root.join("storage") %>
+
+# Any S3-compatible service: the SeaweedFS gateway, MinIO, Backblaze B2, AWS S3.
+# S3_ENDPOINT and S3_FORCE_PATH_STYLE are for services that are not AWS.
+s3:
+  service: S3
+  access_key_id: <%= ENV["S3_ACCESS_KEY_ID"] %>
+  secret_access_key: <%= ENV["S3_SECRET_ACCESS_KEY"] %>
+  region: <%= ENV.fetch("S3_REGION", "us-east-1") %>
+  bucket: <%= ENV["S3_BUCKET"] %>
+  <% if ENV["S3_ENDPOINT"].present? %>
+  endpoint: <%= ENV["S3_ENDPOINT"] %>
+  force_path_style: <%= ENV.fetch("S3_FORCE_PATH_STYLE", "true") == "true" %>
+  <% end %>
+
+# A deployed instance can also keep artifacts on a mounted disk.
+disk:
+  service: Disk
+  root: <%= ENV.fetch("STASH_STORAGE_PATH", "/data/stash") %>

@@ -1,6 +1,5 @@
 source "https://rubygems.org"
 
-# Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.4", ">= 8.1.4.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
@@ -16,23 +15,47 @@ gem "turbo-rails"
 gem "stimulus-rails"
 # Bundle and process CSS [https://github.com/rails/cssbundling-rails]
 gem "cssbundling-rails"
-
-# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-# gem "bcrypt", "~> 3.1.7"
+gem "tailwindcss-rails"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
-# Use the database-backed adapters for Rails.cache, Active Job, and Action Cable
-gem "solid_cache"
-gem "solid_queue"
-gem "solid_cable"
-
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
-# Add HTTP asset caching/compression and X-Sendfile acceleration to Puma [https://github.com/basecamp/thruster/]
-gem "thruster", require: false
+# Postgres-backed Active Job adapter with cron [https://github.com/bensheldon/good_job]
+gem "good_job"
+
+# Verify Weave id_tokens against Weave's JWKS [https://github.com/jwt/ruby-jwt]
+gem "jwt"
+
+# Authorization policies, one per model, in app/policies [https://github.com/varvet/pundit]
+gem "pundit"
+
+# Short public ids with a type prefix, for example arc_4k8xJm2pN9qW. Prefixes are listed in internal-docs.
+gem "encoded_ids", "~> 1.1"
+
+# Artifacts live in Active Storage, on disk locally and in an S3-compatible bucket when deployed.
+gem "aws-sdk-s3", require: false
+
+# Headless Chrome for page snapshots, screenshots and print PDFs [https://github.com/rubycdp/ferrum]
+gem "ferrum"
+
+# ZIP archives for gallery captures [https://github.com/rubyzip/rubyzip]
+gem "rubyzip", require: "zip"
+
+# Pagination for the list pages
+gem "kaminari"
+
+# Rate limits on the API and the sign-in routes
+gem "rack-attack"
+
+# Logging: one line per request, and scrub sensitive values
+gem "lograge"
+gem "logstop"
+
+# Catch unsafe migrations before they run [https://github.com/ankane/strong_migrations]
+gem "strong_migrations"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
@@ -46,66 +69,20 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  # Load .env files in development and test
+  gem "dotenv-rails"
 end
 
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
-end
-gem "jb"
-gem "awesome_print"
-gem "faraday"
-gem "dotenv-rails", groups: [:development, :test]
 
-group :development do
-  gem "pry-rails"
-  gem "bullet"
-  gem "query_count"
-  gem "actual_db_schema"
-  gem "annotaterb"
-  gem "letter_opener_web"
-  gem "rack-mini-profiler", require: false
-end
-
-group :development do
+  # HTML+ERB linter and formatter
   gem "herb"
 end
-gem "lograge"
-gem "logstop"
-gem "redis"
-gem "redis-session-store"
-gem "rack-attack"
-gem "identity_cache"
-gem "cityhash"
-gem "lockbox"
-gem "blind_index"
-gem "invisible_captcha"
-gem "strong_migrations"
-gem "encoded_ids"
-gem "bcrypt", "~> 3.1"
-gem "pundit"
-gem "tailwindcss-rails"
-gem "meta-tags"
-gem "active_link_to"
-gem "good_job"
-gem "flipper"
-gem "flipper-active_record"
-gem "flipper-ui"
-gem "flipper-active_support_cache_store"
-gem "blazer"
-gem "rails_performance"
-gem "console1984"
-gem "audits1984"
-gem "pghero"
-gem "okcomputer"
-gem "ahoy_matey"
-gem "ahoy_email"
-gem "statsd-instrument"
-gem "paper_trail"
-gem "acts_as_paranoid"
-gem "friendly_id"
-gem "pg_search"
-gem "aasm"
-gem "kaminari"
-gem "mailkick"
-gem "premailer-rails"
+
+group :test do
+  # Stub Weave's HTTP endpoints in tests
+  gem "webmock"
+end

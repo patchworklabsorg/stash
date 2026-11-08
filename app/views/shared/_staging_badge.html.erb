@@ -1,0 +1,10 @@
+<%#
+  Marks every page of the staging deployment so nobody mistakes it for production:
+  a yellow and black hazard-stripe frame around the viewport and a STAGING tab at
+  the top. It has the same look as the frame in Weave and Quilt. Both ignore pointer events and take no space.
+%>
+
+<% if staging_environment? %>
+  <div class="staging-frame" aria-hidden="true"></div>
+  <div class="staging-tab" role="status">Staging</div>
+<% end %>

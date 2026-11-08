@@ -1,0 +1,65 @@
+<% content_for :title, "Archives" %>
+
+<div class="flex flex-wrap items-end justify-between gap-4">
+  <h1 class="text-2xl font-semibold">Archives</h1>
+
+  <%= form_with url: archives_path, method: :get, class: "flex gap-2" do |form| %>
+    <%= form.label :q, "Search", class: "sr-only" %>
+    <%= form.search_field :q, value: @term, placeholder: "URL, host or note", class: "w-72 rounded border border-stone-300 px-3 py-1.5 text-sm dark:border-stone-700 dark:bg-stone-950" %>
+    <%= form.submit "Search", class: "rounded border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800" %>
+  <% end %>
+</div>
+
+<% if @archives.empty? %>
+  <p class="mt-8 text-stone-600 dark:text-stone-400">
+    <% if @term.present? %>
+      No archive matches "<%= @term %>".
+    <% else %>
+      Nothing is archived yet.
+      <% if policy(Archive).create? %>
+        <%= link_to "Archive a URL", new_archive_path, class: "underline" %>.
+      <% end %>
+    <% end %>
+  </p>
+<% else %>
+  <div class="mt-6 overflow-x-auto rounded-lg border border-stone-200 dark:border-stone-800">
+    <table class="w-full text-sm">
+      <thead class="bg-stone-100 text-left text-xs uppercase tracking-wide text-stone-600 dark:bg-stone-900 dark:text-stone-400">
+        <tr>
+          <th class="px-3 py-2">URL</th>
+          <th class="px-3 py-2">Kind</th>
+          <th class="px-3 py-2">Status</th>
+          <th class="px-3 py-2">Captures</th>
+          <th class="px-3 py-2">Archived</th>
+        </tr>
+      </thead>
+
+      <tbody class="divide-y divide-stone-200 dark:divide-stone-800">
+        <% @archives.each do |archive| %>
+          <tr class="bg-white hover:bg-stone-50 dark:bg-stone-950 dark:hover:bg-stone-900">
+            <td class="max-w-md truncate px-3 py-2">
+              <%= link_to archive.url, archive, class: "font-medium underline", title: archive.url %>
+
+              <% if archive.note.present? %>
+                <span class="block truncate text-xs text-stone-500"><%= archive.note %></span>
+              <% end %>
+            </td>
+
+            <td class="px-3 py-2"><%= archive.kind %></td>
+            <td class="px-3 py-2"><%= status_badge(archive.status) %></td>
+
+            <td class="px-3 py-2 text-stone-600 dark:text-stone-400">
+              <%= archive.captures.map(&:method_name).join(", ") %>
+            </td>
+
+            <td class="whitespace-nowrap px-3 py-2 text-stone-600 dark:text-stone-400">
+              <%= time_tag archive.created_at, archive.created_at.utc.strftime("%Y-%m-%d %H:%M UTC") %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-4 text-sm"><%= paginate @archives %></div>
+<% end %>

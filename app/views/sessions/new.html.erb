@@ -1,35 +1,30 @@
-<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-  <div class="max-w-md w-full space-y-8">
-    <div>
-      <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-        Sign in to your account
-      </h2>
-      <p class="mt-2 text-center text-sm text-gray-600">
-        Or
-        <%= link_to 'create a new account', sign_up_path, class: 'font-medium text-canopy-green hover:text-fresh-leaf' %>
+<% content_for :title, "Sign in" %>
+
+<div class="mx-auto mt-16 max-w-md">
+  <section class="rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+    <%= render "shared/brand_mark" %>
+
+    <h1 class="mt-4 text-2xl font-semibold">Sign in to Stash</h1>
+
+    <p class="mt-2 text-sm text-stone-600 dark:text-stone-400">
+      Stash is the Patchwork Labs archive: web pages, repositories, documents and media, kept as they were.
+    </p>
+
+    <% if Weave::Config.configured? %>
+      <%= button_to "Sign in with Weave", auth_weave_path, class: "mt-6 w-full rounded bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700" %>
+    <% else %>
+      <p
+        class="
+          mt-6 rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-800
+          dark:bg-rose-950 dark:text-rose-100
+        "
+      >
+        Weave sign-in is not set up. Set WEAVE_ISSUER, WEAVE_CLIENT_ID and WEAVE_CLIENT_SECRET.
       </p>
-    </div>
-
-    <%= form_with url: sign_in_path, class: 'mt-8 space-y-6' do |f| %>
-      <div class="rounded-md shadow-sm -space-y-px">
-        <div>
-          <%= f.label :email, class: 'sr-only' %>
-          <%= f.email_field :email, required: true, autofocus: true, autocomplete: 'email',
-              placeholder: 'Email address',
-              class: 'appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-canopy-green focus:border-canopy-green focus:z-10 sm:text-sm' %>
-        </div>
-        <div>
-          <%= f.label :password, class: 'sr-only' %>
-          <%= f.password_field :password, required: true, autocomplete: 'current-password',
-              placeholder: 'Password',
-              class: 'appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-canopy-green focus:border-canopy-green focus:z-10 sm:text-sm' %>
-        </div>
-      </div>
-
-      <div>
-        <%= f.submit 'Sign in',
-            class: 'group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-canopy-green hover:bg-bamboo-shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-canopy-green cursor-pointer' %>
-      </div>
     <% end %>
-  </div>
+
+    <% if Stash::AuthMode.dev? %>
+      <p class="mt-4 text-center text-sm"><%= link_to "Dev sign-in", dev_sign_in_path, class: "underline" %></p>
+    <% end %>
+  </section>
 </div>

@@ -1,0 +1,16 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Redirect",
+      "fingerprint": "af53da60910e1f41f9848f80178459eb79f1a884a40ab4184f0053f3cda94c2c",
+      "note": "The redirect goes to a signed, short-lived Active Storage URL for an artifact the signed-in person may see. That host is the storage service, so allow_other_host is the point."
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "fingerprint": "c189a12ee2dd27c5a6eefa53e37056602590299b2c92bb7ef4420b39517ab3d2",
+      "note": "Archive#url is validated as an http or https URL with a host before save (Archive#url_is_http), so the link can never be a javascript: or data: URL."
+    }
+  ],
+  "updated": "2026-11-08",
+  "brakeman_version": "7"
+}

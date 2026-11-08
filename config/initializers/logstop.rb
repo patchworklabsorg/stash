@@ -1,14 +1,10 @@
 # frozen_string_literal: true
 
-# Logstop filters sensitive data from logs
-# By default it filters: email, phone, credit card, SSN, IP addresses
-
+# Logstop filters sensitive data from logs.
+# By default it filters: email, phone, credit card, SSN, IP addresses.
+# Stash also scrubs bearer tokens, in case one ever reaches a log line. Stash never logs them on purpose.
 if defined?(Logstop)
-  Logstop.guard(Rails.logger)
-
-  # Add custom scrubbers for application-specific sensitive data
-  # Logstop.scrub(pattern, replacement)
-  #
-  # Example: Scrub API keys
-  # Logstop.scrub(/api_key=\w+/, 'api_key=[FILTERED]')
+  Logstop.guard(Rails.logger, scrubber: lambda { |message|
+    message.gsub(/(Bearer\s+)[^\s"',]+/i, "\\1[FILTERED]")
+  })
 end

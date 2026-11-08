@@ -1,0 +1,55 @@
+<% content_for :title, "Dev sign-in" %>
+
+<section class="mx-auto max-w-lg rounded-lg border border-stone-200 bg-white p-6 dark:border-stone-800 dark:bg-stone-900">
+  <h1 class="text-xl font-semibold">Dev sign-in</h1>
+
+  <p class="mt-1 text-sm text-stone-600 dark:text-stone-400">
+    Development only. Pick a fake user. Nothing here talks to Weave.
+  </p>
+
+  <h2 class="mt-6 text-sm font-semibold uppercase tracking-wide text-stone-500">Presets</h2>
+
+  <ul class="mt-2 space-y-2">
+    <% DevSessionsController::PRESETS.each do |preset| %>
+      <li>
+        <%= form_with url: dev_sign_in_path, method: :post do |form| %>
+          <%= form.hidden_field :sub, value: preset[:sub] %>
+          <%= form.hidden_field :name, value: preset[:name] %>
+
+          <% preset[:roles].each do |role| %>
+            <%= hidden_field_tag "roles[]", role, id: nil %>
+          <% end %>
+
+          <%= form.submit "#{preset[:name]} (#{preset[:roles].presence&.join(", ") || "no roles"})", class: "w-full rounded border border-stone-300 px-3 py-2 text-left text-sm hover:bg-stone-50 dark:border-stone-700 dark:hover:bg-stone-800" %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+
+  <h2 class="mt-6 text-sm font-semibold uppercase tracking-wide text-stone-500">Custom user</h2>
+
+  <%= form_with url: dev_sign_in_path, method: :post, class: "mt-2 space-y-3" do |form| %>
+    <div>
+      <%= form.label :sub, "Weave sub (PWL id)", class: "block text-sm font-medium" %>
+      <%= form.text_field :sub, value: "PWLDEVCUSTOM1", required: true, class: "mt-1 w-full rounded border border-stone-300 px-3 py-2 dark:border-stone-700 dark:bg-stone-950" %>
+    </div>
+
+    <div>
+      <%= form.label :name, class: "block text-sm font-medium" %>
+      <%= form.text_field :name, value: "Custom User", class: "mt-1 w-full rounded border border-stone-300 px-3 py-2 dark:border-stone-700 dark:bg-stone-950" %>
+    </div>
+
+    <fieldset>
+      <legend class="text-sm font-medium">Roles</legend>
+
+      <% Weave::Roles::ALL.each do |role| %>
+        <label class="mr-4 inline-flex items-center gap-1 text-sm">
+          <%= check_box_tag "roles[]", role, false, id: "role_#{role}" %>
+          <%= role %>
+        </label>
+      <% end %>
+    </fieldset>
+
+    <%= form.submit "Sign in", class: "rounded bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700" %>
+  <% end %>
+</section>

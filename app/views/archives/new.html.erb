@@ -1,0 +1,37 @@
+<% content_for :title, "Archive a URL" %>
+
+<section class="mx-auto max-w-2xl">
+  <h1 class="text-2xl font-semibold">Archive a URL</h1>
+
+  <p class="mt-2 text-sm text-stone-600 dark:text-stone-400">
+    Paste a link to a web page, a GitHub repository, a Google Doc or Slides deck, a PDF, a video or a photo post. Stash
+    picks the capture methods from the URL.
+  </p>
+
+  <%= form_with model: @archive, class: "mt-6 space-y-4" do |form| %>
+    <% if @archive.errors.any? %>
+      <ul
+        class="
+          rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-800
+          dark:bg-rose-950 dark:text-rose-100
+        "
+      >
+        <% @archive.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    <% end %>
+
+    <div>
+      <%= form.label :url, "URL", class: "block text-sm font-medium" %>
+      <%= form.url_field :url, required: true, placeholder: "https://", class: "mt-1 w-full rounded border border-stone-300 px-3 py-2 dark:border-stone-700 dark:bg-stone-950" %>
+    </div>
+
+    <div>
+      <%= form.label :note, "Note (optional)", class: "block text-sm font-medium" %>
+      <%= form.text_area :note, rows: 3, maxlength: 2000, class: "mt-1 w-full rounded border border-stone-300 px-3 py-2 dark:border-stone-700 dark:bg-stone-950" %>
+    </div>
+
+    <%= form.submit "Archive", class: "rounded bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700" %>
+  <% end %>
+</section>

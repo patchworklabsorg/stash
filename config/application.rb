@@ -5,18 +5,21 @@ require "rails"
 require "active_model/railtie"
 require "active_job/railtie"
 require "active_record/railtie"
-# require "active_storage/engine"
+require "active_storage/engine"
 require "action_controller/railtie"
-require "action_mailer/railtie"
+# require "action_mailer/railtie"
 # require "action_mailbox/engine"
 # require "action_text/engine"
 require "action_view/railtie"
-require "action_cable/engine"
-# require "rails/test_unit/railtie"
+# require "action_cable/engine"
+require "rails/test_unit/railtie"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
+
+require_relative "../lib/stash/deployment"
+require_relative "../lib/stash/auth_mode"
 
 module Stash
   class Application < Rails::Application
@@ -28,15 +31,20 @@ module Stash
     # Common ones are `templates`, `generators`, or `middleware`, for example.
     config.autoload_lib(ignore: %w[assets tasks])
 
-    # Configuration for the application, engines, and railties goes here.
-    #
-    # These settings can be overridden in specific environments using the files
-    # in config/environments, which are processed later.
-    #
-    # config.time_zone = "Central Time (US & Canada)"
-    # config.eager_load_paths << Rails.root.join("extras")
+    # Timestamps are UTC everywhere.
+    config.time_zone = "UTC"
+    config.active_record.default_timezone = :utc
 
-    # Don't generate system test files.
-    config.generators.system_tests = nil
+    # Primary keys are UUIDs.
+    config.generators do |g|
+      g.orm :active_record, primary_key_type: :uuid
+      g.system_tests = nil
+    end
+
+    # A signed-in session is good for this long. The cookie and the Authentication concern both check it.
+    config.x.session_lifetime = 8.hours
+
+    # Refuse to boot with an unsafe sign-in mode in a deployed environment.
+    config.x.auth_mode = Stash::AuthMode.verify!(env: Rails.env, mode: ENV["STASH_AUTH_MODE"])
   end
 end

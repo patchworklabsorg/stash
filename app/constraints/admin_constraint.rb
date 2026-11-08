@@ -1,18 +1,9 @@
-# frozen_string_literal: true
-
+# Lets only a signed-in admin reach a mounted engine (the GoodJob dashboard). It reads the same
+# encrypted session cookie as the Authentication concern.
 class AdminConstraint
-  def initialize(policy_method)
-    @policy_method = policy_method
-  end
-
   def matches?(request)
-    token = request.cookie_jar.signed[:session_token]
-    return false unless token
-
-    session = Session.find_by(token: token)
-    return false unless session&.user
-
-    AdminPolicy.new(session.user, :admin).public_send(@policy_method)
+    user = SessionUser.from_session(request.session[:user])
+    user.present? && !user.expired? && user.admin?
   rescue StandardError
     false
   end

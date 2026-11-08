@@ -1,64 +1,62 @@
+# Sign-in state for every controller.
+#
+# The session holds a SessionUser: the Weave sub, name, roles and the sign-in time.
+# A session older than config.x.session_lifetime (8 hours) is cleared, and the user must sign in again.
+# A user with no Stash role never gets a session (see #start_session).
 module Authentication
   extend ActiveSupport::Concern
 
+  class Forbidden < StandardError; end
+
   included do
-    before_action :authenticate
-    helper_method :signed_in?, :current_user
+    before_action :require_reader
+    helper_method :current_user, :signed_in?
+    rescue_from Forbidden, with: :render_forbidden
+  end
+
+  class_methods do
+    def allow_unauthenticated_access(**options)
+      skip_before_action :require_reader, **options
+    end
   end
 
   private
 
-  def authenticate
-    if (session_record = find_session_by_cookie)
-      Current.session = session_record
-    end
-  end
+  def current_user
+    return @current_user if defined?(@current_user)
 
-  def require_authentication
-    redirect_to sign_in_path, alert: 'Please sign in to continue.' unless signed_in?
-  end
-
-  def require_admin
-    require_authentication
-    return if current_user&.admin_or_above?
-
-    redirect_to root_path, alert: 'You are not authorized to access this page.'
-  end
-
-  def require_super_admin
-    require_authentication
-    return if current_user&.super_admin?
-
-    redirect_to root_path, alert: 'You are not authorized to access this page.'
+    user = SessionUser.from_session(session[:user])
+    @current_user = user && !user.expired? ? user : nil
   end
 
   def signed_in?
-    Current.session.present?
+    current_user.present?
   end
 
-  def current_user
-    Current.user
+  def require_reader
+    if current_user.nil?
+      expired = session[:user].present?
+      reset_session
+      redirect_to sign_in_path, alert: expired ? "Your session expired. Sign in again." : nil
+    elsif !current_user.reader?
+      raise Forbidden
+    end
   end
 
-  def find_session_by_cookie
-    Session.find_by(token: cookies.signed[:session_token])
+  # Starts a session for a user with at least one Stash role. Without a role, the user gets
+  # a 403 page and no session. reset_session first, so an old session id is never reused.
+  def start_session(sub:, name:, email:, roles:)
+    reset_session
+    user = SessionUser.new(sub: sub, name: name, email: email, roles: Weave::Roles.from_claim(roles),
+      signed_in_at: Time.current)
+    raise Forbidden unless user.reader?
+
+    session[:user] = user.to_session
+    @current_user = user
+    redirect_to archives_path
   end
 
-  def start_session(user)
-    session_record = user.sessions.create!(
-      ip_address: request.remote_ip,
-      user_agent: request.user_agent
-    )
-    cookies.signed.permanent[:session_token] = {
-      value: session_record.token,
-      httponly: true,
-      same_site: :lax
-    }
-    Current.session = session_record
-  end
-
-  def end_session
-    Current.session&.destroy
-    cookies.delete(:session_token)
+  def render_forbidden
+    render "errors/forbidden", status: :forbidden
   end
 end

@@ -1,10 +1,9 @@
-# frozen_string_literal: true
-
-# Use Redis for session storage
-Rails.application.config.session_store :redis_session_store,
-  key: "_#{Rails.application.class.module_parent_name.underscore}_session",
-  redis: {
-    expire_after: 90.minutes,
-    key_prefix: 'session:',
-    url: ENV.fetch('REDIS_URL') { 'redis://localhost:6379/2' }
-  }
+# The session is an encrypted cookie. It holds the signed-in user's Weave sub, name, roles and sign-in time.
+# The cookie expires after 8 hours. The Authentication concern also checks the sign-in time on each request.
+# SameSite=Lax lets the cookie come back on the top-level redirect from Weave to /auth/callback.
+Rails.application.config.session_store :cookie_store,
+  key: "_stash_session",
+  expire_after: Rails.application.config.x.session_lifetime,
+  same_site: :lax,
+  secure: !Rails.env.local?,
+  httponly: true

@@ -1,48 +1,39 @@
 Rails.application.routes.draw do
-  # Health checks (public endpoint)
-  mount OkComputer::Engine, at: '/health' if defined?(OkComputer)
-  namespace :admin do
-    root to: 'application#index'
-
-    # Blazer BI Dashboard (admin or above)
-    mount Blazer::Engine, at: 'blazer', constraints: AdminConstraint.new(:blazer?) if defined?(Blazer)
-
-    # Flipper Feature Flags (super_admin or above)
-    mount Flipper::UI.app(Flipper), at: 'flipper', constraints: AdminConstraint.new(:flipper?) if defined?(Flipper)
-
-    # Rails Performance Dashboard (admin or above)
-    mount RailsPerformance::Engine, at: 'performance', constraints: AdminConstraint.new(:rails_performance?) if defined?(RailsPerformance)
-
-    # GoodJob Dashboard (admin or above)
-    mount GoodJob::Engine, at: 'jobs', constraints: AdminConstraint.new(:jobs?) if defined?(GoodJob)
-
-    # Console Audits (super_admin or above)
-    mount Audits1984::Engine, at: 'console_audits', constraints: AdminConstraint.new(:console_audits?) if defined?(Audits1984)
-
-    # PgHero PostgreSQL Dashboard (admin or above)
-    mount PgHero::Engine, at: 'pghero', constraints: AdminConstraint.new(:pghero?) if defined?(PgHero)
-
-    resources :users
-  end
-  # Authentication
-  get 'sign_in', to: 'sessions#new'
-  post 'sign_in', to: 'sessions#create'
-  delete 'sign_out', to: 'sessions#destroy'
-  get 'sign_up', to: 'registrations#new'
-  post 'sign_up', to: 'registrations#create'
-  if Rails.env.development?
-    mount LetterOpenerWeb::Engine, at: '/letter_opener'
-  end
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
-
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
-  # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
-  # get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
+  # "/" sends you to sign-in, or to the archive list when you are signed in.
+  root "home#show"
 
-  # Defines the root path route ("/")
-  # root "posts#index"
+  get "sign_in" => "sessions#new"
+  post "auth/weave" => "sessions#create", as: :auth_weave
+  get "auth/callback" => "sessions#callback"
+  delete "sign_out" => "sessions#destroy"
+
+  # The dev-only sign-in. These routes exist only in development and test. The app refuses to
+  # boot in production and staging with STASH_AUTH_MODE=dev. Outside dev mode the controller
+  # answers 404.
+  if Rails.env.local?
+    get "dev/sign_in" => "dev_sessions#new"
+    post "dev/sign_in" => "dev_sessions#create"
+  end
+
+  # Archives by public id (arc_...). Archive#to_param gives the public id.
+  resources :archives, only: %i[index show new create destroy] do
+    post :rerun, on: :member
+  end
+
+  # One artifact's file, by public id (art_...), through a signed storage URL.
+  resources :artifacts, only: :show
+
+  # The archive API for patch apps, such as Krater. Bearer tokens from Weave, no session.
+  namespace :api do
+    namespace :v1 do
+      resources :archives, only: %i[index show create]
+    end
+  end
+
+  # The GoodJob dashboard, for admins. The constraint reads the session cookie.
+  mount GoodJob::Engine => "admin/jobs", constraints: AdminConstraint.new
 end

@@ -1,31 +1,96 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="en">
   <head>
-    <title><%= content_for(:title) || "Stash" %></title>
+    <title><%= content_for(:title) ? "#{content_for(:title)} | Stash" : "Stash" %></title>
+
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="application-name" content="Stash">
-    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="color-scheme" content="light dark">
+    <meta name="robots" content="noindex, nofollow">
+
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-    <%= display_meta_tags site: 'Stash' %>
 
-    <%= yield :head %>
-
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
-    <link rel="icon" href="/icon.png" type="image/png">
     <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
   </head>
 
-  <body>
-    <main class="container mx-auto mt-28 px-5 flex">
+  <body class="min-h-screen bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+    <%= render "shared/staging_badge" %>
+
+    <a
+      class="
+        sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:rounded focus:bg-amber-300
+        focus:px-3 focus:py-2 focus:text-stone-900
+      "
+      href="#main"
+    >
+      Skip to content
+    </a>
+
+    <header class="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+        <%= link_to root_path, class: "flex items-center gap-2 text-lg font-semibold tracking-tight" do %>
+          <%= render "shared/brand_mark" %> Stash
+        <% end %>
+
+        <% if signed_in? %>
+          <nav class="flex items-center gap-4 text-sm" aria-label="Main">
+            <%= nav_link "Archives", archives_path, "archives" %>
+
+            <% if policy(Archive).create? %>
+              <%= nav_link "Archive a URL", new_archive_path, "new" %>
+            <% end %>
+
+            <% if current_user.admin? %>
+              <%= link_to "Jobs", "/admin/jobs", class: "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100" %>
+            <% end %>
+          </nav>
+
+          <div class="ml-auto flex items-center gap-3 text-sm">
+            <span class="font-medium"><%= current_user.display_name %></span>
+
+            <span class="flex gap-1">
+              <span class="sr-only">Roles:</span>
+
+              <% current_user.roles.each do |role| %>
+                <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300"><%= role %></span>
+              <% end %>
+            </span>
+
+            <%= button_to "Sign out", sign_out_path, method: :delete, class: "text-stone-600 underline hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100" %>
+          </div>
+        <% end %>
+      </div>
+    </header>
+
+    <main id="main" class="mx-auto max-w-6xl px-4 py-6">
+      <% if notice.present? %>
+        <p
+          class="
+            mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900
+            dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100
+          "
+          role="status"
+        >
+          <%= notice %>
+        </p>
+      <% end %>
+
+      <% if alert.present? %>
+        <p
+          class="
+            mb-4 rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-800
+            dark:bg-rose-950 dark:text-rose-100
+          "
+          role="alert"
+        >
+          <%= alert %>
+        </p>
+      <% end %>
+
       <%= yield %>
     </main>
   </body>
