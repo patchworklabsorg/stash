@@ -40,8 +40,9 @@ flowchart LR
 | `CENTRAL_DATABASE_URL` | `postgres://stash:<password>@skein.wildebeest-stargazer.ts.net:5432/patchwork_central` | the staging cluster on hem:5432 |
 | `STASH_HOSTS` | `stash.patchworklabs.org` | `stash-staging.patchworklabs.org` |
 | `WEAVE_ISSUER`, `WEAVE_CLIENT_ID`, `WEAVE_CLIENT_SECRET` | the Stash app in Weave, redirect URI `https://stash.patchworklabs.org/auth/callback` | the Stash app in Weave staging |
-| `STASH_STORAGE_SERVICE` | `s3` | `s3` |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | the bucket | its own bucket |
+| `STASH_STORAGE_SERVICE` | `disk` (the infra module sets it) or `s3` | the same |
+| `STASH_STORAGE_PATH` | with `disk`: the host directory bind-mounted into both containers, `/data/stash` | `/data/stash-staging` |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | with `s3`: the bucket | its own bucket |
 | `GITHUB_TOKEN` | optional, read-only public access | optional |
 | `CAPTURE_TIMEOUT`, `CAPTURE_MAX_BYTES` | defaults 600 seconds, 2 GB | the same |
 | `GOOD_JOB_MAX_THREADS` | `2` | `1` |
@@ -51,7 +52,7 @@ The worker needs `/tmp` with room for a capture (a video or a repository), and `
 ## What the infra module must provide
 
 1. **The database role and schema.** A login role `stash` in `patchwork-central`, and a schema `stash` that the role owns (hosts/central-db-schema.nix).
-2. **The bucket.** An S3-compatible bucket and a key pair with read and write on it. Krater's SeaweedFS on weft has an S3 gateway; a bucket there, or a MinIO on the Stash host, both work.
+2. **The files.** Either a host directory for the `disk` service, bind-mounted into both containers at the same path and owned by uid 1000 (the `rails` user in the image), with a backup; or an S3-compatible bucket and a key pair with read and write on it. The first deploy (hank, `modules/stash` in infra) uses the directory.
 3. **The Weave app.** An OAuth application in Weave with the redirect URI, the scopes `openid profile email roles` for sign-in, and `introspect` so that Stash can check patch apps' tokens. App roles `viewer`, `archivist`, `admin`.
 4. **A Traefik router on alastor** for the hostname, to the host's nginx on the tailnet, as for Quilt and Krater.
 5. **The env file** as an agenix secret, with the variables above.
