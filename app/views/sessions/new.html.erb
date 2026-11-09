@@ -17,7 +17,7 @@
 
       <% if Weave::Config.configured? %>
         <%# Turbo off: Turbo submits with fetch, and fetch cannot follow the redirect to Weave's origin. %>
-      <%= button_to auth_weave_path, form: { data: { turbo: false } }, class: "btn btn-primary btn-lg btn-block" do %>
+        <%= button_to auth_weave_path, form: { data: { turbo: false } }, class: "btn btn-primary btn-lg btn-block" do %>
           <%= icon(:log_in) %>Sign in with Weave
         <% end %>
       <% else %>
