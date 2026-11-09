@@ -8,7 +8,7 @@ Stash is the Patchwork Labs archive. It takes a URL and keeps a durable copy of 
 
 ## Stack
 
-Rails 8.1 on Ruby 4.0, server-rendered ERB with Tailwind, GoodJob for the captures, Active Storage for the files, Weave for sign-in. The capture tools are headless Chromium (through Ferrum), git, the GitHub API, yt-dlp, gallery-dl and LibreOffice.
+Rails 8.1 on Ruby 4.0, server-rendered ERB with Tailwind in the Patchwork look (internal-docs `design/`, copied from Weave: tokens, components, fonts, `UiHelper`, `IconHelper`, Lucide icons), GoodJob for the captures, Active Storage for the files, Weave for sign-in. The capture tools are headless Chromium (through Ferrum), git, the GitHub API, yt-dlp, gallery-dl and LibreOffice.
 
 ## How an archive happens
 

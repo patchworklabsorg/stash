@@ -1,0 +1,22 @@
+<%# The focus layout: one centered patch on the quilt. Sign-in and the dev sign-in render here. %>
+<!DOCTYPE html>
+
+<html lang="en" class="h-full">
+  <head>
+    <title><%= [content_for(:title), "Stash"].compact_blank.join(" · ") %></title>
+    <%= render "shared/head" %>
+  </head>
+
+  <body class="h-full quilt-bg text-ink font-sans">
+    <a href="#main" class="skip-link">Skip to content</a>
+    <%= render "shared/staging_badge" %>
+
+    <div id="flash"><%= render "shared/flash" %></div>
+
+    <main id="main" class="focus-main relative" tabindex="-1">
+      <%= yield %>
+    </main>
+
+    <%= render "shared/theme_toggle", floating: true %>
+  </body>
+</html>

@@ -1,0 +1,34 @@
+<%# Flash messages as toasts. The flash Stimulus controller dismisses them. %>
+<% if flash.any? %>
+  <div class="toasts" data-controller="flash">
+    <% flash.each do |name, message| %>
+      <%
+        tone, glyph, live = case name.to_s
+                            when "notice", "success" then [:success, :circle_check, "polite"]
+                            when "alert", "error" then [:danger, :circle_x, "assertive"]
+                            when "warning" then [:warning, :triangle_alert, "polite"]
+                            else [:info, :info, "polite"]
+                            end
+      %>
+
+      <div
+        class="toast toast-<%= tone %>"
+        role="alert"
+        aria-live="<%= live %>"
+        data-flash-type="<%= name %>"
+        data-flash-target="toast"
+        data-action="mouseenter->flash#pause mouseleave->flash#resume"
+      >
+        <%= icon(glyph, size: 18) %>
+
+        <div class="flex-1 min-w-0"><%= message %></div>
+
+        <button type="button" class="toast-close" data-action="flash#dismiss" aria-label="Close">
+          <%= icon(:x, size: 14) %>
+        </button>
+
+        <div class="toast-bar" aria-hidden="true"></div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

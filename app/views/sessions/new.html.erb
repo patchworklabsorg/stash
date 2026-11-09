@@ -1,31 +1,39 @@
 <% content_for :title, "Sign in" %>
 
-<div class="mx-auto mt-16 max-w-md">
-  <section class="rounded-lg border border-stone-200 bg-white p-8 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-    <%= render "shared/brand_mark" %>
+<div class="min-h-full flex items-center justify-center p-6">
+  <div class="patch patch-bound patch-tilt-l w-full max-w-md">
+    <div class="quilt-binding"></div>
 
-    <h1 class="mt-4 text-2xl font-semibold">Sign in to Stash</h1>
+    <div class="p-8 sm:p-9 space-y-6">
+      <div class="text-center space-y-2">
+        <%= render "shared/wordmark", size: :lg, href: nil %>
 
-    <p class="mt-2 text-sm text-stone-600 dark:text-stone-400">
-      Stash is the Patchwork Labs archive: web pages, repositories, documents and media, kept as they were.
-    </p>
+        <h1 class="font-display text-2xl font-bold text-ink">Sign in to Stash</h1>
 
-    <% if Weave::Config.configured? %>
-      <%# Turbo off: Turbo submits with fetch, and fetch cannot follow the redirect to Weave's origin. %>
-      <%= button_to "Sign in with Weave", auth_weave_path, form: { data: { turbo: false } }, class: "mt-6 w-full rounded bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700" %>
-    <% else %>
-      <p
-        class="
-          mt-6 rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-800
-          dark:bg-rose-950 dark:text-rose-100
-        "
-      >
-        Weave sign-in is not set up. Set WEAVE_ISSUER, WEAVE_CLIENT_ID and WEAVE_CLIENT_SECRET.
-      </p>
-    <% end %>
+        <p class="text-ink-soft text-sm">
+          The Patchwork Labs archive: web pages, repositories, documents and media, kept as they were.
+        </p>
+      </div>
 
-    <% if Stash::AuthMode.dev? %>
-      <p class="mt-4 text-center text-sm"><%= link_to "Dev sign-in", dev_sign_in_path, class: "underline" %></p>
-    <% end %>
-  </section>
+      <% if Weave::Config.configured? %>
+        <%# Turbo off: Turbo submits with fetch, and fetch cannot follow the redirect to Weave's origin. %>
+      <%= button_to auth_weave_path, form: { data: { turbo: false } }, class: "btn btn-primary btn-lg btn-block" do %>
+          <%= icon(:log_in) %>Sign in with Weave
+        <% end %>
+      <% else %>
+        <div class="callout callout-danger" role="alert">
+          <%= icon(:circle_x, size: 18) %>
+
+          <div class="callout-body">
+            <p class="callout-title">Weave sign-in is not set up</p>
+            <p>Set WEAVE_ISSUER, WEAVE_CLIENT_ID and WEAVE_CLIENT_SECRET.</p>
+          </div>
+        </div>
+      <% end %>
+
+      <% if Stash::AuthMode.dev? %>
+        <p class="text-center text-sm"><%= link_to "Dev sign-in", dev_sign_in_path, class: "link" %></p>
+      <% end %>
+    </div>
+  </div>
 </div>

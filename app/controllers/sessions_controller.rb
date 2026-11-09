@@ -1,6 +1,7 @@
 # The sign-in page, the Weave OIDC flow and sign-out.
 class SessionsController < ApplicationController
   allow_unauthenticated_access
+  layout "focus"
 
   def new
     redirect_to archives_path if current_user&.reader?

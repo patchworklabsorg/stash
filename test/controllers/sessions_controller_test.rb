@@ -15,7 +15,7 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     get sign_in_path
 
     assert_select "link[rel=stylesheet]", count: 1
-    assert_select "link[rel=stylesheet][href^=?]", "/assets/application-"
+    assert_select "link[rel=stylesheet][href^=?]", "/assets/tailwind-"
   end
 
   test "the Weave button submits without Turbo, so the browser follows the redirect to Weave" do

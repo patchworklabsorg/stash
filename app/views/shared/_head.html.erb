@@ -1,0 +1,27 @@
+<%# Everything every layout puts in <head>, after its own <title>. The same head as Weave. %>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="application-name" content="Stash">
+<meta name="apple-mobile-web-app-title" content="Stash">
+<meta name="author" content="Patchwork Labs Inc">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f7f5fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16112a" media="(prefers-color-scheme: dark)">
+
+<%# ?v=3: the files in public/ get a one year cache header, and two placeholders had these names. %>
+<link rel="icon" href="/icon.svg?v=3" type="image/svg+xml">
+<link rel="icon" href="/icon.png?v=3" type="image/png">
+<link rel="apple-touch-icon" href="/icon.png?v=3">
+
+<%= csrf_meta_tags %>
+<%= csp_meta_tag %>
+
+<%# The two weights every page uses, so the first paint is in Geist. %>
+<link rel="preload" href="/fonts/geist-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/geist-600-latin.woff2" as="font" type="font/woff2" crossorigin>
+
+<%# Sets data-theme before first paint; the stylesheet keys everything off it. %>
+<%= render "shared/theme" %>
+<%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+<%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+<%= yield :head %>
