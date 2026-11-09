@@ -27,9 +27,9 @@ class ArchivesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, archive.public_id
     assert_not_includes response.body, "Delete this archive"
-    # Finished: nothing polls, and the page does not ask Turbo to morph.
+    # Finished: nothing polls. The morph metas stay, so the last refresh of a running page morphs too.
     assert_select "[data-controller=poll]", count: 0
-    assert_select "meta[name=turbo-refresh-method]", count: 0
+    assert_select "meta[name=turbo-refresh-method][content=morph]", count: 1
   end
 
   test "an archive that is still running polls for its result and morphs the page" do
