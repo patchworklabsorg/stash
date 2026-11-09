@@ -29,6 +29,7 @@ ENV["RAILS_ENV"] ||= "development"
 require_relative "../config/environment"
 require "fileutils"
 require "erb"
+require "digest"
 
 FakeArchive = Struct.new(:url)
 FakeCapture = Struct.new(:archive, :method_name, :log) do
@@ -43,7 +44,9 @@ FileUtils.mkdir_p(out)
 results = []
 
 urls.each do |url|
-  slug = url.sub(%r{\Ahttps?://}, "").gsub(/[^a-z0-9]+/i, "-").squeeze("-").delete_suffix("-").first(80)
+  # The host and path, readable, plus a hash so two URLs never share a directory.
+  slug = url.sub(%r{\Ahttps?://}, "").gsub(/[^a-z0-9]+/i, "-").squeeze("-").delete_suffix("-").first(72) +
+         "-" + Digest::SHA256.hexdigest(url).first(8)
   methods = options[:methods] || Capturers::Router.methods_for(url)
   $stderr.puts "#{url}: #{methods.join(", ")}"
 
@@ -86,12 +89,12 @@ template = ERB.new(<<~'HTML', trim_mode: "-")
   <h1>Capture sample, <%= Time.now.utc.strftime("%Y-%m-%d %H:%M UTC") %></h1>
   <%- results.each do |r| -%>
   <section>
-    <h2><a href="<%= r[:url] %>"><%= r[:url] %></a> <span class="meta">(<%= r[:method] %>, <%= r[:seconds] %> s)</span></h2>
-    <%- if r[:error] -%><p class="fail"><%= r[:error] %></p><%- end -%>
-    <p class="meta"><%= r[:files].map { |f| "#{f[:role]}: <a href='#{f[:path]}'>#{::File.basename(f[:path])}</a> (#{f[:bytes]} bytes)" }.join(" · ") %></p>
+    <h2><a href="<%= ERB::Util.h(r[:url]) %>"><%= ERB::Util.h(r[:url]) %></a> <span class="meta">(<%= r[:method] %>, <%= r[:seconds] %> s)</span></h2>
+    <%- if r[:error] -%><p class="fail"><%= ERB::Util.h(r[:error]) %></p><%- end -%>
+    <p class="meta"><%= r[:files].map { |f| "#{ERB::Util.h(f[:role])}: <a href='#{ERB::Util.h(f[:path])}'>#{ERB::Util.h(::File.basename(f[:path]))}</a> (#{f[:bytes]} bytes)" }.join(" · ") %></p>
     <div class="row">
       <%- r[:files].select { |f| f[:path].end_with?(".png", ".jpg", ".jpeg", ".webp") }.each do |f| -%>
-      <a href="<%= f[:path] %>"><img src="<%= f[:path] %>" alt="<%= f[:role] %>" loading="lazy"></a>
+      <a href="<%= ERB::Util.h(f[:path]) %>"><img src="<%= ERB::Util.h(f[:path]) %>" alt="<%= ERB::Util.h(f[:role]) %>" loading="lazy"></a>
       <%- end -%>
       <pre><%= ERB::Util.html_escape(r[:log]) %></pre>
     </div>

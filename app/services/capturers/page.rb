@@ -1,3 +1,5 @@
+require "base64"
+
 module Capturers
   # A rendered web page in headless Chromium, through Ferrum: the MHTML of the page as loaded
   # (original), a full-page PNG (screenshot) and a print PDF (rendition). One browser, one load.
@@ -10,7 +12,8 @@ module Capturers
   # through an IntersectionObserver, images load lazily, animations run for seconds. A capture
   # of the page as first loaded is then mostly blank below the fold. So before the files are
   # written, the capturer asks for reduced motion, runs animations fast, walks the whole page
-  # once in viewport steps, and returns to the top. See docs/design.md, "Dynamic pages".
+  # once in viewport steps, returns to the top, and freezes the page. See docs/design.md,
+  # "Dynamic pages".
   class Page < Base
     VIEWPORT = [ 1440, 900 ].freeze
     LOAD_TIMEOUT = 60
@@ -18,8 +21,13 @@ module Capturers
     # The walk down the page: at most this many steps of one viewport each, this long apart.
     SCROLL_STEPS = 60
     SCROLL_PAUSE = 0.25
+    # Up to this many quarter seconds for the web fonts.
+    FONT_WAITS = 20
     # After the walk, time for the last reveals and the images they started.
     SETTLE = 1.0
+    # The tallest screenshot: Chromium blanks or clips captures past 16384px, and a feed that
+    # grows on every scroll would otherwise ask for one the size of the walk, or more.
+    MAX_SCREENSHOT_HEIGHT = 16_384
 
     def call
       @started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -28,10 +36,11 @@ module Capturers
         attempts += 1
         log("Chromium: loading #{url}#{" (second try)" if attempts > 1}")
         with_browser { |browser| capture_in(browser) }
-      rescue Ferrum::DeadBrowserError => e
-        # A heavy page can take the renderer down once. One more try, in a new browser.
-        retry if attempts < 2
-        raise ToolFailed, "Chromium: #{e.class}: #{e.message.to_s.first(300)}"
+      rescue Ferrum::Error => e
+        # A heavy page can take the browser or its renderer down once. One more try, in a new
+        # browser, when there is time for it.
+        retry if crashed?(e) && attempts < 2 && elapsed < Capturers.timeout / 2
+        raise
       end
 
       [
@@ -52,7 +61,7 @@ module Capturers
       wait_for_idle(page, "the page kept loading")
       log("title: #{page.title.to_s.first(200)} (#{elapsed}s)")
 
-      reveal(page)
+      height = reveal(page)
       wait_for_idle(page, "images kept loading after the scroll")
       self.class.sleep_for(SETTLE)
       freeze(page)
@@ -60,7 +69,7 @@ module Capturers
       log("saving the MHTML (#{elapsed}s)")
       page.mhtml(path: path("page.mhtml"))
       log("saving the screenshot (#{elapsed}s)")
-      page.screenshot(path: path("page.png"), full: true)
+      screenshot(page, height)
       log("saving the PDF (#{elapsed}s)")
       page.pdf(path: path("page.pdf"), format: :A4, print_background: true)
       log("done (#{elapsed}s)")
@@ -70,6 +79,13 @@ module Capturers
       (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started).round(1)
     end
 
+    # The browser process died, or the page's renderer crashed and Ferrum lost the target.
+    def crashed?(error)
+      return true if error.is_a?(Ferrum::DeadBrowserError) || error.is_a?(Ferrum::NoSuchPageError)
+
+      error.message.to_s.match?(/crashed|Inspected target navigated or closed/i)
+    end
+
     # Before the page loads: ask for reduced motion, so pages that honor it skip their
     # entrance animations, and run the ones that remain at 50x so they are over in time.
     def calm(page)
@@ -77,11 +93,14 @@ module Capturers
       page.command("Animation.enable")
       page.command("Animation.setPlaybackRate", playbackRate: 50)
     rescue Ferrum::Error => e
+      raise if crashed?(e)
+
       log("could not set reduced motion: #{e.message.to_s.first(120)}")
     end
 
     # Walks down the page one viewport at a time, so observers fire and lazy images load,
     # then returns to the top. Waits for fonts first, so text does not reflow in the capture.
+    # Returns the height of the page after the walk.
     def reveal(page)
       wait_for_fonts(page)
       height = page.evaluate("document.documentElement.scrollHeight").to_i
@@ -89,47 +108,79 @@ module Capturers
       steps = [ (height.to_f / step).ceil, SCROLL_STEPS ].min
       log("scrolling #{height}px in #{steps} steps")
       steps.times do |i|
-        page.execute("window.scrollTo(0, #{(i + 1) * step})")
+        page.execute("window.scrollTo({ top: #{(i + 1) * step}, left: 0, behavior: \"instant\" })")
         self.class.sleep_for(SCROLL_PAUSE)
+        if i.zero? && steps > 1 && page.evaluate("window.scrollY").to_i.zero?
+          log("the page did not scroll; an inner element scrolls instead, so the walk reveals nothing")
+          break
+        end
       end
-      page.execute("window.scrollTo(0, 0)")
+      page.execute("window.scrollTo({ top: 0, left: 0, behavior: \"instant\" })")
       self.class.sleep_for(SCROLL_PAUSE)
       final = page.evaluate("document.documentElement.scrollHeight").to_i
-      log("page is #{final}px tall after the scroll") if final != height
+      log("page is #{final}px tall after the scroll")
+      final
     rescue Ferrum::Error => e
+      raise if crashed?(e)
+
       log("the scroll stopped early: #{e.message.to_s.first(120)}")
+      height || VIEWPORT.last
     end
 
-    # Stops the page from drawing new frames while the files are written: pauses media and
-    # takes away requestAnimationFrame, so a render loop (a WebGL scene, a carousel) keeps its
-    # last frame. Without this, a software-rendered WebGL scene made one screenshot take
-    # 16 minutes, because every frame it kept drawing had to be composited first.
+    # Stops the page from drawing new frames while the files are written: pauses media, takes
+    # away requestAnimationFrame in every frame, and pauses the remaining animations, so a
+    # render loop (a WebGL scene, a carousel) keeps its last frame. Without this, a
+    # software-rendered WebGL scene made one screenshot take 16 minutes, because every frame
+    # it kept drawing had to be composited first.
+    FREEZE = <<~JS.freeze
+      document.querySelectorAll("video, audio").forEach((media) => { try { media.pause(); } catch (_) {} });
+      window.requestAnimationFrame = () => 0;
+      window.cancelAnimationFrame = () => {};
+    JS
+
     def freeze(page)
-      page.execute(<<~JS)
-        document.querySelectorAll("video, audio").forEach((media) => { try { media.pause(); } catch (_) {} });
-        window.requestAnimationFrame = () => 0;
-        window.cancelAnimationFrame = () => {};
-      JS
+      page.frames.each do |frame|
+        frame.execute(FREEZE)
+      rescue Ferrum::Error => e
+        raise if crashed?(e)
+      end
+      page.command("Animation.setPlaybackRate", playbackRate: 0)
     rescue Ferrum::Error => e
+      raise if crashed?(e)
+
       log("could not freeze the page: #{e.message.to_s.first(120)}")
     end
 
     # Up to five seconds for the web fonts, so text does not reflow between the files.
     def wait_for_fonts(page)
-      20.times do
+      FONT_WAITS.times do
         return if page.evaluate("document.fonts.status") == "loaded"
 
         self.class.sleep_for(SCROLL_PAUSE)
       end
-      log("fonts were still loading after 5 seconds; continuing")
+      log("fonts were still loading after #{FONT_WAITS / 4} seconds; continuing")
     rescue Ferrum::Error => e
+      raise if crashed?(e)
+
       log("could not wait for fonts: #{e.message.to_s.first(120)}")
     end
 
+    # Ferrum answers false when the network is still busy at the deadline; it does not raise.
     def wait_for_idle(page, reason)
-      page.network.wait_for_idle(timeout: IDLE_TIMEOUT)
-    rescue Ferrum::TimeoutError
+      return if page.network.wait_for_idle(timeout: IDLE_TIMEOUT)
+
       log("#{reason} for #{IDLE_TIMEOUT} seconds; capturing as is")
+    end
+
+    # The whole page, as tall as the walk found it, up to the cap. Through the protocol rather
+    # than Ferrum's `full: true`, which reads the height again and sets no limit.
+    def screenshot(page, height)
+      clip_height = [ height, SCROLL_STEPS * VIEWPORT.last, MAX_SCREENSHOT_HEIGHT ].min
+      clip_height = VIEWPORT.last if clip_height < VIEWPORT.last
+      log("the screenshot is cut at #{clip_height}px of #{height}px") if clip_height < height
+      result = page.command("Page.captureScreenshot", format: "png", captureBeyondViewport: true,
+        clip: { x: 0, y: 0, width: VIEWPORT.first, height: clip_height, scale: 1 })
+      ::File.binwrite(path("page.png"), Base64.decode64(result.fetch("data")))
     end
 
     def with_browser
@@ -153,6 +204,8 @@ module Capturers
         browser_path: ENV["BROWSER_PATH"].presence,
         # SwiftShader draws WebGL in software, so a canvas site renders without a GPU. With
         # disable-gpu instead, WebGL is off and such a page captures as a blank gradient.
+        # enable-unsafe-swiftshader is what turns it on since Chromium 128: the shader compiler
+        # is not hardened against hostile shaders, and the container is the boundary.
         browser_options: {
           "no-sandbox" => nil, "disable-dev-shm-usage" => nil, "hide-scrollbars" => nil,
           "use-angle" => "swiftshader", "enable-unsafe-swiftshader" => nil

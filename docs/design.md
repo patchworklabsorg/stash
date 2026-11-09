@@ -93,14 +93,16 @@ Every external tool runs in a subprocess with a clean environment and the URL as
 Many pages draw themselves as the reader scrolls: sections start at opacity 0 and fade in through an IntersectionObserver, images load lazily, animations run for seconds. A capture of the page as first loaded is mostly blank below the fold. So the `page` capturer, before it writes a file:
 
 1. Asks for `prefers-reduced-motion: reduce` and sets the animation playback rate to 50x, both through the DevTools protocol, before the page loads. Pages that honor reduced motion skip their entrance animations. The ones that do not are over in a moment.
-2. Waits for the network to go idle (10 seconds at most), then for `document.fonts.ready`.
-3. Walks the page one viewport (900px) at a time, a quarter second per step, at most 60 steps, then returns to the top. Observers fire and lazy images load on the way.
+2. Waits for the network to go idle (10 seconds at most), then up to 5 seconds for `document.fonts.status` to read `loaded`.
+3. Walks the page one viewport (900px) at a time with instant scrolls, a quarter second per step, at most 60 steps, then returns to the top. Observers fire and lazy images load on the way. When the window does not move after the first step (an inner element scrolls instead), the walk stops and the log says so.
 4. Waits for the network to go idle again, then one second for the last reveals.
-5. Freezes the page: pauses every video and audio element and takes away `requestAnimationFrame`, so a render loop keeps its last frame while the files are written. A software-rendered WebGL scene that kept drawing made one screenshot take 16 minutes.
+5. Freezes the page: pauses every video and audio element and takes away `requestAnimationFrame` in every frame, then sets the animation playback rate to 0, so a render loop keeps its last frame while the files are written. A software-rendered WebGL scene that kept drawing made one screenshot take 16 minutes.
 
-Chromium runs with SwiftShader (`--use-angle=swiftshader`), so WebGL draws in software and a canvas site renders without a GPU; with the GPU off, such a page captured as a blank gradient. A heavy page can take the renderer down once (`Ferrum::DeadBrowserError`); the capturer then tries once more in a new browser. The log notes the elapsed seconds at each step.
+Then the MHTML, the PNG and the PDF are written from that state. The PNG is as tall as the page was after the walk, capped at 16384px (Chromium blanks taller captures) and at the walked height, so a feed that grows on every scroll does not ask for a screenshot the size of the feed. The MHTML keeps the DOM as revealed, so the archived copy is not blank either.
 
-Then the MHTML, the full-page PNG and the PDF are written from that state. The MHTML keeps the DOM as revealed, so the archived copy is not blank either. A page that pins sections to the scroll position (a scroll-driven hero) still looks like a long strip in the screenshot. That is the page as it is; the PDF and the MHTML keep the content.
+Chromium runs with SwiftShader (`--use-angle=swiftshader --enable-unsafe-swiftshader`), so WebGL draws in software and a canvas site renders without a GPU; with the GPU off, such a page captured as a blank gradient. The second flag is what turns WebGL on since Chromium 128: its shader compiler is not hardened against hostile shaders, so an archived page gets that attack surface, with the container as the boundary (the browser already runs with `--no-sandbox` there). A heavy page can take the browser or its renderer down once; the capturer then tries once more in a new browser, when less than half of `CAPTURE_TIMEOUT` is spent. The log notes the elapsed seconds at each step.
+
+What this does not fix: a page that pins sections to the scroll position (a scroll-driven hero) still looks like a long strip in the screenshot; a reveal library that hides sections again when they leave the viewport un-reveals them on the return to the top; a JavaScript entrance animation that the return to the top starts is frozen where it was. Those pages are captured as they are; the PDF and the MHTML keep the content.
 
 `bin/capture-sample <urls>` runs the capturers on a list of URLs without the database and writes an `index.html` with every screenshot and log, to check a change like this against real pages before it ships.
 

@@ -47,7 +47,7 @@ flowchart LR
 | `CAPTURE_TIMEOUT`, `CAPTURE_MAX_BYTES` | defaults 600 seconds, 2 GB | the same |
 | `GOOD_JOB_MAX_THREADS` | `2` | `1` |
 
-The worker needs `/tmp` with room for a capture (a video or a repository), and `/dev/shm` of at least 1 GB or Chromium with `--disable-dev-shm-usage` (already set). Give the worker container 2 GB of memory.
+The worker needs `/tmp` with room for a capture (a video or a repository), and `/dev/shm` of at least 1 GB or Chromium with `--disable-dev-shm-usage` (already set). Give the worker container 2 GB of memory. Chromium draws WebGL in software (`--use-angle=swiftshader --enable-unsafe-swiftshader`, see `design.md`, "Dynamic pages"): a canvas-heavy page can hold one CPU for the half minute before the capturer freezes it, and the second flag trades shader-compiler hardening for working WebGL, with the container as the boundary. Debian's `chromium` package ships the SwiftShader libraries the flags need.
 
 ## What the infra module must provide
 
