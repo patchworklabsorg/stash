@@ -1,0 +1,45 @@
+From: <Saved by Blink>
+Snapshot-Content-Location: https://example.org/story/
+Subject: A story
+Date: Sun, 9 Nov 2026 01:00:00 -0000
+MIME-Version: 1.0
+Content-Type: multipart/related;
+	type="text/html";
+	boundary="----MultipartBoundary--stashtest----"
+
+------MultipartBoundary--stashtest----
+Content-Type: text/html
+Content-ID: <frame-1@mhtml.blink>
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://example.org/story/
+
+<!DOCTYPE html><html><head><meta charset=3D"utf-8"><title>A story</title>
+<link rel=3D"stylesheet" href=3D"https://example.org/css/site.css">
+<style>body { background: url(https://example.org/img/bg.png); }</style>
+</head><body>
+<h1>A story</h1>
+<img src=3D"/img/photo.png" alt=3D"photo">
+<img srcset=3D"/img/photo.png 1x, https://example.org/img/photo.png 2x" src=3D"/img/photo.png" alt=3D"two">
+<a href=3D"/next" target=3D"_self">Next</a>
+<a href=3D"https://other.example/x" rel=3D"me">Other</a>
+<script src=3D"https://example.org/js/app.js"></script>
+</body></html>
+------MultipartBoundary--stashtest----
+Content-Type: text/css
+Content-Transfer-Encoding: quoted-printable
+Content-Location: https://example.org/css/site.css
+
+h1 { color: rebeccapurple; background: url("../img/bg.png"); }
+------MultipartBoundary--stashtest----
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: https://example.org/img/photo.png
+
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
+------MultipartBoundary--stashtest----
+Content-Type: image/png
+Content-Transfer-Encoding: base64
+Content-Location: https://example.org/img/bg.png
+
+iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
+------MultipartBoundary--stashtest------

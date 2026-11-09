@@ -64,7 +64,7 @@ Each capturer is one class in `app/services/capturers/`, with one public method 
 
 | Method | Tool | Applies to | Artifacts |
 |---|---|---|---|
-| `page` | headless Chromium (Ferrum), one load | every `http(s)` URL that serves HTML | `original`: MHTML of the rendered page, `screenshot`: full-page PNG, `rendition`: print PDF |
+| `page` | headless Chromium (Ferrum), one load | every `http(s)` URL that serves HTML | `original`: MHTML of the rendered page, `view`: the same page as one HTML file for the viewer, `screenshot`: full-page PNG, `rendition`: print PDF |
 | `git` | `git clone --mirror`, `git bundle` | GitHub, GitLab, Codeberg, Bitbucket, sr.ht, any `.git` URL | `original`: `.bundle`, `metadata`: refs and HEAD |
 | `github` | GitHub REST API | `github.com/<owner>/<repo>` | `metadata`: repo JSON, releases, last 100 commits, contributors; README as served |
 | `document` | HTTP download, Google export URLs, LibreOffice | Google Docs, Slides, Sheets, Drawings; direct `.pdf`, `.pptx`, `.docx`, `.xlsx`, `.odp`, `.odt`, `.key` and others | `original`: the file as served; `rendition`: PDF |
@@ -171,8 +171,17 @@ While an archive runs, its page refreshes itself every five seconds (the `poll` 
 - `staging`: deployed at `stash-staging.patchworklabs.org`. Weave staging as IdP, the staging central database on `hem`, its own bucket. The construction border and the STAGING label on every page.
 - `production`: deployed at `stash.patchworklabs.org`.
 
+## Viewing a page
+
+A browser does not render an MHTML served over HTTP, so the `page` capturer also writes a `view` artifact: the MHTML turned into one HTML file by `Capturers::Mhtml`. The document is parsed with Nokogiri's HTML5 parser and rewritten node by node: every resource the MHTML carries (styles, images) is inlined as a data URL, once however often the page uses it; the web fonts and images Chromium's MHTML leaves out come from the network traffic of the load (fonts and images only, 5 MB each, 60 MB in all); each `<canvas>` becomes a PNG of what it drew; every link is made absolute, opens in a new tab with `rel="noopener noreferrer nofollow"`, and is never a `javascript:` or `data:` URL. Scripts, `<meta http-equiv="refresh">`, the referrer meta, `preconnect` and the other link hints, `ping` and `on*` attributes are removed, so the copy makes no request of its own. The page's own `<base>` is used for resolution, then dropped.
+
+The archive page offers "View the archived page", which shows that file in an iframe served from Stash (`ArtifactsController#frame`) with a policy that runs nothing: `default-src 'none'`, inline styles and data URLs allowed, no network at all, `sandbox` without `allow-same-origin`, so the archived page never touches Stash's origin or cookies, and the site under review never learns that someone opened the copy. The page around the frame carries `frame-src 'self'`, so the frame cannot navigate away from Stash whatever the rewrite missed. A font or an image the capture did not keep falls back; the screenshot shows the page as it looked. A page that draws itself with JavaScript shows the DOM as captured. There is no view for an MHTML over 50 MB; the MHTML, PNG and PDF stand on their own, and a view that cannot be made is logged and skipped. The MHTML, PNG and PDF stay as the simple copies that need no software.
+
+The next step is replay the way the Internet Archive does it: capture into WACZ with Browsertrix Crawler (in the image, or a sidecar container on hank), store the WACZ as an artifact served with range requests, and embed ReplayWeb.page with its service worker on the Stash origin, so the captured page runs its own JavaScript against the recorded responses and links stay inside the archive. Decided 2026-11-08; it follows the Krater error loop.
+
 ## Later
 
+- Wayback-style replay: WACZ through Browsertrix Crawler and ReplayWeb.page (see "Viewing a page").
 - Share links with an expiry, for one archive.
 - A callback URL on `POST /api/v1/archives`.
 - Figma files, itch.io games, Notion pages.

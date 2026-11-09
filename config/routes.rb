@@ -25,7 +25,11 @@ Rails.application.routes.draw do
   end
 
   # One artifact's file, by public id (art_...), through a signed storage URL.
-  resources :artifacts, only: :show
+  resources :artifacts, only: :show do
+    # The viewer for a `view` artifact: the page around the frame, and the frame's document.
+    get :view, on: :member
+    get :frame, on: :member
+  end
 
   # The archive API for patch apps, such as Krater. Bearer tokens from Weave, no session.
   namespace :api do

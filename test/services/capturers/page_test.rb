@@ -11,6 +11,9 @@ class Capturers::PageTest < ActiveSupport::TestCase
 
     # Ferrum answers false at the deadline; it does not raise.
     def wait_for_idle(timeout:) = @idle
+
+    # No responses recorded: the view gets nothing beyond the MHTML.
+    def traffic = []
   end
 
   class FakeFrame

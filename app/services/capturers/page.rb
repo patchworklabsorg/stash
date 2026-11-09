@@ -43,14 +43,27 @@ module Capturers
         raise
       end
 
-      [
+      outputs = [
         output("original", "page.mhtml", content_type: "multipart/related"),
         output("screenshot", "page.png", content_type: "image/png"),
         output("rendition", "page.pdf", content_type: "application/pdf")
       ]
+      outputs.insert(1, output("view", "page.html", content_type: "text/html")) if ::File.exist?(path("page.html"))
+      outputs
     rescue Ferrum::Error => e
       raise ToolFailed, "Chromium: #{e.class}: #{e.message.to_s.first(300)}"
     end
+
+    # One response from the network is kept for the view up to this size, and all of them up
+    # to the total. Fonts and images only; the MHTML already carries the HTML and the CSS.
+    VIEW_RESOURCE_BYTES = 5.megabytes
+    VIEW_RESOURCES_TOTAL = 60.megabytes
+    # No view for a page whose MHTML is larger than this: the view is the MHTML's resources
+    # as base64 and the frame loads the whole file into memory to serve it.
+    VIEW_MAX_MHTML_BYTES = 50.megabytes
+    # The largest canvas drawing kept; a page can make toDataURL answer anything.
+    VIEW_CANVAS_BYTES = 5.megabytes
+    VIEW_TYPES = %r{\A(font/|image/|application/(x-)?font|application/vnd\.ms-fontobject)}
 
     private
 
@@ -72,6 +85,8 @@ module Capturers
       screenshot(page, height)
       log("saving the PDF (#{elapsed}s)")
       page.pdf(path: path("page.pdf"), format: :A4, print_background: true)
+      log("saving the view (#{elapsed}s)")
+      write_view(page)
       log("done (#{elapsed}s)")
     end
 
@@ -181,6 +196,57 @@ module Capturers
       result = page.command("Page.captureScreenshot", format: "png", captureBeyondViewport: true,
         clip: { x: 0, y: 0, width: VIEWPORT.first, height: clip_height, scale: 1 })
       ::File.binwrite(path("page.png"), Base64.decode64(result.fetch("data")))
+    end
+
+    # The copy a browser can show (Capturers::Mhtml): the MHTML as one HTML file, with the
+    # fonts and images Chromium's MHTML leaves out taken from the network traffic of this load,
+    # and each <canvas> replaced by what was drawn on it. A view that cannot be made is logged
+    # and skipped; the MHTML, PNG and PDF stand on their own.
+    def write_view(page)
+      mhtml_bytes = ::File.size(path("page.mhtml"))
+      if mhtml_bytes > VIEW_MAX_MHTML_BYTES
+        log("no view: the MHTML is #{mhtml_bytes} bytes, more than #{VIEW_MAX_MHTML_BYTES}")
+        return
+      end
+
+      html = Mhtml.inline(path("page.mhtml"), resources: view_resources(page), canvases: canvas_images(page))
+      ::File.write(path("page.html"), html)
+      log("view: #{html.bytesize} bytes as one HTML file")
+    rescue StandardError => e
+      # Any failure here, a hostile stylesheet included, costs the view and nothing else.
+      log("no view: #{e.class}: #{e.message.to_s.first(200)}")
+    end
+
+    def view_resources(page)
+      total = 0
+      page.network.traffic.each_with_object({}) do |exchange, resources|
+        response = exchange.response
+        next unless response&.status == 200 && response.content_type.to_s.match?(VIEW_TYPES)
+        next if resources.key?(response.url)
+
+        body = response.body
+        next if body.nil? || body.bytesize > VIEW_RESOURCE_BYTES || (total += body.bytesize) > VIEW_RESOURCES_TOTAL
+
+        part = Mhtml::Part.new(location: response.url, content_type: response.content_type, body: body)
+        resources[response.url] = part
+        # The page names the URL it asked for; a redirect answers from another.
+        resources[exchange.request.url] ||= part if exchange.request && exchange.request.url != response.url
+      rescue Ferrum::Error
+        next
+      end
+    end
+
+    # What each canvas shows, as a PNG data URL, in document order; nil where it cannot be read
+    # (a tainted canvas, or WebGL without a kept drawing buffer).
+    def canvas_images(page)
+      images = Array(page.evaluate(<<~JS))
+        Array.from(document.querySelectorAll("canvas")).map((canvas) => {
+          try { return canvas.width && canvas.height ? canvas.toDataURL("image/png") : null; } catch (_) { return null; }
+        })
+      JS
+      images.map { |data| data.is_a?(String) && data.start_with?("data:image/") && data.bytesize <= VIEW_CANVAS_BYTES ? data : nil }
+    rescue Ferrum::Error
+      []
     end
 
     def with_browser
