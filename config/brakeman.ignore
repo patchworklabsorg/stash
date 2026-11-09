@@ -7,10 +7,10 @@
     },
     {
       "warning_type": "Cross-Site Scripting",
-      "fingerprint": "0a8cda81dfda0b763b2a511bac000d526b6fb3cb073422ffb755b25ce74d9e37",
+      "fingerprint": "c8f8dc6d1159cd8019678e206f8f257e2f96bbdccdd69f495fdf94cb76b17df7",
       "note": "Archive#url is validated as an http or https URL with a host before save (Archive#url_is_http), so the link can never be a javascript: or data: URL."
     }
   ],
-  "updated": "2026-11-08",
+  "updated": "2026-11-09",
   "brakeman_version": "7"
 }
