@@ -11,6 +11,14 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Sign in to Stash"
   end
 
+  test "the Weave button submits without Turbo, so the browser follows the redirect to Weave" do
+    with_fake_weave do
+      get sign_in_path
+
+      assert_select "form[action=?][data-turbo=false]", auth_weave_path
+    end
+  end
+
   test "the Weave flow signs a person with a role in" do
     with_fake_weave do
       post auth_weave_path
