@@ -29,5 +29,9 @@ export default class extends Controller {
   refresh() {
     if (document.hidden) return this.schedule()
     Turbo.visit(window.location.href, { action: "replace" })
+    // The morph keeps this element, and this controller with it, while captures still run; the
+    // next tick has to be set here, because connect() does not run again. When the new page has
+    // no poll element, the morph removes it and disconnect() clears the timer.
+    this.schedule()
   }
 }
