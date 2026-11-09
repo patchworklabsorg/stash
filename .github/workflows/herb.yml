@@ -15,7 +15,7 @@ jobs:
     name: Lint ERB
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Lint with herb
         run: npx --yes @herb-tools/linter
@@ -24,7 +24,7 @@ jobs:
     name: Format check ERB
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check formatting with herb
         run: npx --yes @herb-tools/formatter --check
