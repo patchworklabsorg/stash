@@ -39,6 +39,29 @@ class Capturers::MhtmlTest < ActiveSupport::TestCase
     assert_includes @html, "Archived by Stash"
   end
 
+  test "a resource from the network fills what the MHTML lacks, and the MHTML wins when both have it" do
+    font = Capturers::Mhtml::Part.new(location: "https://example.org/js/app.js", content_type: "font/woff", body: "WOFF")
+    other = Capturers::Mhtml::Part.new(location: "https://example.org/img/photo.png", content_type: "image/gif", body: "GIF")
+    html = Capturers::Mhtml.inline(file_fixture("page.mhtml").to_s, resources: { font.location => font, other.location => other })
+
+    assert_includes html, %(src="data:font/woff;base64,#{Base64.strict_encode64("WOFF")}")
+    assert_includes html, %(src="data:image/png;base64,#{PNG}")
+    assert_not_includes html, "image/gif"
+  end
+
+  test "each canvas becomes an image of what it showed, and one without an image stays" do
+    path = File.join(Dir.mktmpdir, "c.mhtml")
+    File.write(path, File.read(file_fixture("page.mhtml")).sub("<h1>A story</h1>",
+      "<h1>A story</h1><canvas id=3D\"chart\" class=3D\"wide\" width=3D\"300\" height=3D\"150\" data-x=3D\"1\"></canvas><canvas></canvas>"))
+    data = "data:image/png;base64,#{PNG}"
+
+    html = Capturers::Mhtml.inline(path, canvases: [ data, nil ])
+
+    assert_includes html, %(<img src="#{data}" alt="" id="chart" class="wide" width="300" height="150">)
+    assert_includes html, "<canvas></canvas>"
+    assert_not_includes html, "data-x"
+  end
+
   test "a file that is not MHTML fails as a tool failure" do
     path = File.join(Dir.mktmpdir, "x.mhtml")
     File.write(path, "not mhtml at all")

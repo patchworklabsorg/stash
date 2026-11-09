@@ -42,18 +42,23 @@ module Capturers
         retry if crashed?(e) && attempts < 2 && elapsed < Capturers.timeout / 2
         raise
       end
-      # The copy a browser can show: the MHTML as one HTML file (Capturers::Mhtml).
-      ::File.write(path("page.html"), Mhtml.inline(path("page.mhtml")))
 
-      [
+      outputs = [
         output("original", "page.mhtml", content_type: "multipart/related"),
-        output("view", "page.html", content_type: "text/html"),
         output("screenshot", "page.png", content_type: "image/png"),
         output("rendition", "page.pdf", content_type: "application/pdf")
       ]
+      outputs.insert(1, output("view", "page.html", content_type: "text/html")) if ::File.exist?(path("page.html"))
+      outputs
     rescue Ferrum::Error => e
       raise ToolFailed, "Chromium: #{e.class}: #{e.message.to_s.first(300)}"
     end
+
+    # One response from the network is kept for the view up to this size, and all of them up
+    # to the total. Fonts and images only; the MHTML already carries the HTML and the CSS.
+    VIEW_RESOURCE_BYTES = 5.megabytes
+    VIEW_RESOURCES_TOTAL = 60.megabytes
+    VIEW_TYPES = %r{\A(font/|image/|application/(x-)?font|application/vnd\.ms-fontobject)}
 
     private
 
@@ -75,6 +80,8 @@ module Capturers
       screenshot(page, height)
       log("saving the PDF (#{elapsed}s)")
       page.pdf(path: path("page.pdf"), format: :A4, print_background: true)
+      log("saving the view (#{elapsed}s)")
+      write_view(page)
       log("done (#{elapsed}s)")
     end
 
@@ -184,6 +191,46 @@ module Capturers
       result = page.command("Page.captureScreenshot", format: "png", captureBeyondViewport: true,
         clip: { x: 0, y: 0, width: VIEWPORT.first, height: clip_height, scale: 1 })
       ::File.binwrite(path("page.png"), Base64.decode64(result.fetch("data")))
+    end
+
+    # The copy a browser can show (Capturers::Mhtml): the MHTML as one HTML file, with the
+    # fonts and images Chromium's MHTML leaves out taken from the network traffic of this load,
+    # and each <canvas> replaced by what was drawn on it. A view that cannot be made is logged
+    # and skipped; the MHTML, PNG and PDF stand on their own.
+    def write_view(page)
+      html = Mhtml.inline(path("page.mhtml"), resources: view_resources(page), canvases: canvas_images(page))
+      ::File.write(path("page.html"), html)
+      log("view: #{html.bytesize} bytes as one HTML file")
+    rescue Error, Ferrum::Error => e
+      log("no view: #{e.message.to_s.first(200)}")
+    end
+
+    def view_resources(page)
+      total = 0
+      page.network.traffic.each_with_object({}) do |exchange, resources|
+        response = exchange.response
+        next unless response&.status == 200 && response.content_type.to_s.match?(VIEW_TYPES)
+        next if resources.key?(response.url)
+
+        body = response.body
+        next if body.nil? || body.bytesize > VIEW_RESOURCE_BYTES || (total += body.bytesize) > VIEW_RESOURCES_TOTAL
+
+        resources[response.url] = Mhtml::Part.new(location: response.url, content_type: response.content_type, body: body)
+      rescue Ferrum::Error
+        next
+      end
+    end
+
+    # What each canvas shows, as a PNG data URL, in document order; nil where it cannot be read
+    # (a tainted canvas, or WebGL without a kept drawing buffer).
+    def canvas_images(page)
+      Array(page.evaluate(<<~JS))
+        Array.from(document.querySelectorAll("canvas")).map((canvas) => {
+          try { return canvas.width && canvas.height ? canvas.toDataURL("image/png") : null; } catch (_) { return null; }
+        })
+      JS
+    rescue Ferrum::Error
+      []
     end
 
     def with_browser
