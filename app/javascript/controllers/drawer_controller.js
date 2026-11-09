@@ -13,7 +13,8 @@ export default class extends Controller {
   static targets = ["panel", "scrim", "button", "content"]
 
   connect() {
-    this.closeOnVisit = () => this.close()
+    // A refresh of the current page (the poll controller) is a visit too; it must not close the menu.
+    this.closeOnVisit = (event) => { if (event.detail?.url !== window.location.href) this.close() }
     document.addEventListener("turbo:before-visit", this.closeOnVisit)
     // Past 64rem the CSS shows the panel in place, so an open drawer must
     // let go of the page (inert, scrim) when the viewport grows past it.

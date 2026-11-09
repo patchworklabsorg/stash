@@ -68,13 +68,23 @@
     </div>
   <% end %>
 
+  <%#
+    A page refresh (the poll controller, while captures run) morphs this page and keeps the scroll.
+    Both metas stay on the finished page too: Turbo reads them from the page it refreshes.
+  %>
+
+  <% content_for :head do %>
+    <meta name="turbo-refresh-method" content="morph">
+    <meta name="turbo-refresh-scroll" content="preserve">
+  <% end %>
+
   <% unless @archive.finished? %>
-    <div class="callout callout-info" role="status">
+    <div class="callout callout-info" role="status" data-controller="poll" data-poll-interval-value="5000">
       <%= icon(:loader_circle, size: 18, class: "spinner") %>
 
       <div class="callout-body">
         <p class="callout-title">Captures are running</p>
-        <p>Reload this page in a moment.</p>
+        <p>This page updates itself as they finish.</p>
       </div>
     </div>
   <% end %>
