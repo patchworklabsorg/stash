@@ -24,6 +24,9 @@ module Capturers
 
     private
 
+    GOOGLE_NAMES = { "document" => "Google Doc", "presentation" => "Google Slides deck",
+                     "spreadsheets" => "Google Sheet", "drawings" => "Google Drawing" }.freeze
+
     def google(kind, id)
       export = GOOGLE_EXPORTS.fetch(kind)
       native = Download.fetch(google_export_url(kind, id, export[:native]), to: path("document.#{export[:native]}"))
@@ -34,6 +37,14 @@ module Capturers
         output("original", "document.#{export[:native]}", content_type: export[:type], filename: "#{id}.#{export[:native]}"),
         output("rendition", "document.pdf", content_type: "application/pdf", filename: "#{id}.pdf")
       ]
+    rescue NotFound, NotPublic, Blocked => e
+      # Google answers 404 (or 401, 403) for a document that is not shared with anyone with the
+      # link, the same as for one that does not exist. Either way the owner has to act.
+      error = NotPublic.new("Google answered #{e.http_status} for the #{GOOGLE_NAMES.fetch(kind)}: " \
+                            "it is not shared with anyone with the link, or it does not exist. " \
+                            "Ask the owner to share it, then run the archive again.")
+      error.http_status = e.http_status
+      raise error
     end
 
     def google_export_url(kind, id, format)

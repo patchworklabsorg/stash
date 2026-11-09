@@ -21,6 +21,7 @@ class ArchiveSerializer
       created_at: a.created_at&.iso8601,
       completed_at: a.completed_at&.iso8601,
       page_url: archive_url(a, host: default_host),
+      problem: a.problem,
       captures: a.captures.map { |c| capture_json(c) }
     }
   end
@@ -33,6 +34,7 @@ class ArchiveSerializer
       method: capture.method_name,
       status: capture.status,
       error: capture.error,
+      error_code: capture.error_code,
       started_at: capture.started_at&.iso8601,
       finished_at: capture.finished_at&.iso8601,
       artifacts: capture.artifacts.map { |artifact| artifact_json(artifact) }

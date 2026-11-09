@@ -4,7 +4,9 @@
 #   queued   waiting for a worker
 #   running  the capturer is running
 #   done     the capturer stored its artifacts
-#   failed   the capturer raised, timed out or passed the size limit; `error` says which
+#   failed   the capturer raised, timed out or passed the size limit; `error` says which, and
+#            `error_code` is the reason in one word (Capturers::CODES: not_public, not_found,
+#            blocked, too_large, timeout, tool_failed, unexpected)
 #   skipped  the method does not apply after all (for example, HEAD said the URL is HTML, so no file)
 #
 # A capture is never deleted when it fails, so the archive shows what was tried.
@@ -22,6 +24,7 @@ class Capture < CentralRecord
   validates :method_name, inclusion: { in: METHODS }, uniqueness: { scope: :archive_id }
   validates :status, inclusion: { in: STATUSES }
   validates :position, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+  validates :error_code, inclusion: { in: Capturers::CODES }, allow_nil: true
 
   scope :unfinished, -> { where(status: %w[queued running]) }
 

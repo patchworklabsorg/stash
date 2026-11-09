@@ -31,6 +31,23 @@ module Capturers
       result
     end
 
+    # Runs the block, and when a tool fails, reads the last lines of the log for the reason:
+    # a sign-in or a share that is missing (NotPublic) or a source that is gone (NotFound). Any
+    # other failure stays a ToolFailed. `tool` names the tool in the message.
+    def classify_tool_failure(tool, not_public:, not_found:)
+      yield
+    rescue ToolFailed => e
+      tail = capture.log.to_s.last(4.kilobytes)
+      if not_public.any? { |pattern| tail.match?(pattern) }
+        raise NotPublic, "#{tool}: the source is private or needs a sign-in. " \
+                         "Ask the owner to make it public, then run the archive again. (#{e.message})"
+      elsif not_found.any? { |pattern| tail.match?(pattern) }
+        raise NotFound, "#{tool}: the source is gone or the URL is wrong. (#{e.message})"
+      end
+
+      raise
+    end
+
     def path(name)
       ::File.join(workdir, name)
     end

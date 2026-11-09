@@ -15,7 +15,13 @@ module Capturers
       command += [ "--cookies", ENV["YTDLP_COOKIES_FILE"] ] if ENV["YTDLP_COOKIES_FILE"].present?
       command += [ "--proxy", ENV["YTDLP_PROXY"] ] if ENV["YTDLP_PROXY"].present?
       command << "--" << url
-      run!(*command, env: { "HOME" => workdir })
+      classify_tool_failure("yt-dlp",
+        not_public: [ /Private video/i, /This video is private/i, /Sign in to confirm/i, /members-only/i,
+                      /login required/i, /requires authentication/i, /not available to you/i ],
+        not_found: [ /Video unavailable/i, /has been removed/i, /does not exist/i, /HTTP Error 404/i,
+                     /Unsupported URL/i, /no video/i ]) do
+        run!(*command, env: { "HOME" => workdir })
+      end
 
       media = Dir.glob(path("video.*")).reject { |f| f.end_with?(".info.json", ".png") }.first
       raise ToolFailed, "yt-dlp wrote no media file" unless media

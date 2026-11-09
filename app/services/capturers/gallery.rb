@@ -8,7 +8,11 @@ module Capturers
       command += [ "--cookies", ENV["YTDLP_COOKIES_FILE"] ] if ENV["YTDLP_COOKIES_FILE"].present?
       command += [ "--proxy", ENV["YTDLP_PROXY"] ] if ENV["YTDLP_PROXY"].present?
       command << "--" << url
-      run!(*command, env: { "HOME" => workdir })
+      classify_tool_failure("gallery-dl",
+        not_public: [ /login required/i, /AuthenticationError/i, /AuthorizationError/i, /private/i, /log ?in/i ],
+        not_found: [ /NotFoundError/i, /HttpError.*404/i, /404/, /does not exist/i, /Unsupported URL/i ]) do
+        run!(*command, env: { "HOME" => workdir })
+      end
 
       files = Dir.glob(path("post/**/*")).select { |f| ::File.file?(f) }.sort
       raise ToolFailed, "gallery-dl downloaded nothing" if files.empty?

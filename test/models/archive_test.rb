@@ -36,6 +36,27 @@ class ArchiveTest < ActiveSupport::TestCase
     assert_equal "queued", create_archive_with_captures({ "page" => "queued", "git" => "queued" }, url: "https://example.org/f").status
   end
 
+  test "problem names the failed capture whose code matters most, and is nil without a failure" do
+    archive = create_archive_with_captures({ "github" => "failed", "git" => "failed", "page" => "done" })
+    archive.captures.find_by(method_name: "github").update!(error: "ToolFailed: GitHub answered 500", error_code: "tool_failed")
+    archive.captures.find_by(method_name: "git").update!(error: "NotPublic: git clone: private", error_code: "not_public")
+
+    problem = archive.problem
+    assert_equal "not_public", problem[:code]
+    assert_equal "git", problem[:method]
+    assert_equal "NotPublic: git clone: private", problem[:message]
+    assert_includes problem[:hint], "Ask the owner"
+
+    assert_nil create_archive_with_captures({ "page" => "done" }).problem
+  end
+
+  test "a failed capture without a code reads as tool_failed" do
+    archive = create_archive_with_captures({ "page" => "failed" })
+    archive.captures.first.update!(error: "ToolFailed: Chromium died")
+
+    assert_equal "tool_failed", archive.problem[:code]
+  end
+
   test "completed_at is set only when finished" do
     assert_nil create_archive_with_captures({ "page" => "running" }).completed_at
     assert_not_nil create_archive_with_captures({ "page" => "done" }, url: "https://example.org/a").completed_at

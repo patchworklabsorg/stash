@@ -86,6 +86,14 @@ The router never pulls a whole account: a profile URL on a gallery host is a pag
 
 Each capturer has a timeout (`CAPTURE_TIMEOUT`, default 10 minutes) and a size limit (`CAPTURE_MAX_BYTES`, default 2 GB). A capture past either limit fails with that reason in `error`. Nothing is deleted on failure: the other captures of the archive still run.
 
+### Why a capture failed
+
+A failure is a `Capturers::Error` subclass, and the class is the reason: `NotPublic` (a private repository, a Google document that is not shared with anyone with the link, a private video), `NotFound` (404, 410, gone), `Blocked` (403, 429, an anti-bot wall), `TooLarge`, `Timeout`, `ToolFailed` (nothing more specific is known). `CaptureJob` stores the class as `captures.error_code` (`not_public`, `not_found`, `blocked`, `too_large`, `timeout`, `tool_failed`; `unexpected` for a bug) next to the message in `error`.
+
+HTTP downloads map the status (`Capturers.http_error`). Google exports turn 401, 403 and 404 into `NotPublic`, because Google answers 404 for a document that exists but is not shared. GitHub's 404 is `NotPublic` for the same reason. Tools that only exit non-zero (git, yt-dlp, gallery-dl) run through `classify_tool_failure`, which reads the last lines of their output for the known phrases ("could not read Username", "Private video", "login required", "not found").
+
+`Archive#problem` picks the failed capture whose code comes first in `Capturers::CODES` and gives it with a hint for a person (`Capturers.hint`). The archive page shows it in a callout, and the API returns it as `problem`, so the patch app that submitted the URL can tell the submitter what to fix (see `api.md`).
+
 Every external tool runs in a subprocess with a clean environment and the URL as an argument, never through a shell string. A capturer never runs code from the archived content.
 
 ## Who can do what

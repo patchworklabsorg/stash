@@ -45,14 +45,27 @@ class CaptureJobTest < ActiveJob::TestCase
 
     assert_equal "skipped", @capture.reload.status
     assert_equal "does not apply", @capture.error
+    assert_nil @capture.error_code
   end
 
-  test "a capturer error makes the capture failed, with the reason" do
+  test "a capturer error makes the capture failed, with the reason and its code" do
     with_capturer(FakeCapturer::Fails) { CaptureJob.perform_now(@capture) }
 
     assert_equal "failed", @capture.reload.status
     assert_equal "ToolFailed: the tool said no", @capture.error
+    assert_equal "tool_failed", @capture.error_code
     assert_equal "failed", @archive.reload.status
+    assert_equal "tool_failed", @archive.problem[:code]
+  end
+
+  test "a private source fails the capture with the not_public code" do
+    with_capturer(FakeCapturer::Private) { CaptureJob.perform_now(@capture) }
+
+    assert_equal "failed", @capture.reload.status
+    assert_equal "not_public", @capture.error_code
+    assert_includes @capture.error, "NotPublic: ask the owner"
+    assert_equal "not_public", @archive.reload.problem[:code]
+    assert_includes @archive.problem[:hint], "Ask the owner to share it"
   end
 
   test "an unexpected exception fails the capture and is raised again" do
@@ -60,6 +73,7 @@ class CaptureJobTest < ActiveJob::TestCase
 
     assert_equal "failed", @capture.reload.status
     assert_includes @capture.error, "ArgumentError"
+    assert_equal "unexpected", @capture.error_code
   end
 
   test "a finished capture is not run again" do

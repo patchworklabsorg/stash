@@ -68,6 +68,18 @@ class Archive < CentralRecord
     %w[done partial failed].include?(status)
   end
 
+  # What stopped the archive, when something did: the failed capture whose error code matters
+  # most to the person who submitted the URL (Capturers::CODES order), as a hash with the code,
+  # the method, the message and a hint for a person. Nil while nothing has failed.
+  def problem
+    failed = captures.select { |c| c.status == "failed" }
+    return nil if failed.empty?
+
+    capture = failed.min_by { |c| [ Capturers::CODES.index(c.error_code) || Capturers::CODES.size, c.position ] }
+    code = capture.error_code || "tool_failed"
+    { code: code, method: capture.method_name, message: capture.error, hint: Capturers.hint(code) }
+  end
+
   def title
     "#{host} · #{kind}"
   end

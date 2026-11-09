@@ -11,8 +11,9 @@ module Capturers
 
     Fetched = Data.define(:uri, :content_type, :filename, :path, :byte_size)
 
-    # Downloads the URL into `to`. Returns a Fetched. Raises TooLarge past the cap, ToolFailed on an
-    # HTTP error.
+    # Downloads the URL into `to`. Returns a Fetched. Raises TooLarge past the cap, and on an HTTP
+    # error the class for its status (Capturers.http_error): NotPublic, Blocked, NotFound or
+    # ToolFailed.
     def self.fetch(url, to:, max_bytes: Capturers.max_bytes)
       uri = URI.parse(url)
       MAX_REDIRECTS.times do
@@ -42,7 +43,7 @@ module Capturers
               result = Fetched.new(uri: uri, content_type: content_type_of(response), filename: filename_of(response, uri),
                 path: to, byte_size: size)
             else
-              raise ToolFailed, "GET #{uri.host} answered #{response.code}"
+              raise Capturers.http_error(response.code, "GET #{uri.host} answered #{response.code}")
             end
           end
         end
