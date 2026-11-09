@@ -42,6 +42,9 @@ class CaptureJob < ApplicationJob
   end
 
   def finish(capture, status, error: nil, error_code: nil)
+    # An error class that is not in CODES (a bare Capturers::Error, a new subclass) must not
+    # leave the capture running on a validation error.
+    error_code = "unexpected" if error_code && Capturers::CODES.exclude?(error_code)
     capture.update!(status: status, error: error, error_code: error_code, finished_at: Time.current)
     capture.archive.refresh_status!
   end

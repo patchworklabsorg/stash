@@ -9,8 +9,8 @@ module Capturers
       command += [ "--proxy", ENV["YTDLP_PROXY"] ] if ENV["YTDLP_PROXY"].present?
       command << "--" << url
       classify_tool_failure("gallery-dl",
-        not_public: [ /login required/i, /AuthenticationError/i, /AuthorizationError/i, /private/i, /log ?in/i ],
-        not_found: [ /NotFoundError/i, /HttpError.*404/i, /404/, /does not exist/i, /Unsupported URL/i ]) do
+        not_public: [ /login required/i, /AuthenticationError/i, /AuthorizationError/i, /account is private/i, /private account/i ],
+        not_found: [ /NotFoundError/i, /HttpError.*404/i, /HttpError.*410/i ]) do
         run!(*command, env: { "HOME" => workdir })
       end
 

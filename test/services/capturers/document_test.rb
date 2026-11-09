@@ -38,6 +38,27 @@ class Capturers::DocumentTest < ActiveSupport::TestCase
     assert_equal 401, error.http_status
   end
 
+  test "a Google deck that redirects to the sign-in page fails as not_public, not as a done capture" do
+    stub_request(:get, %r{docs\.google\.com/presentation/d/.*/export/pptx})
+      .to_return(status: 302, headers: { "Location" => "https://accounts.google.com/ServiceLogin?continue=x" })
+    stub_request(:get, %r{accounts\.google\.com/ServiceLogin})
+      .to_return(status: 200, body: "<html><title>Sign in - Google Accounts</title></html>", headers: { "Content-Type" => "text/html; charset=utf-8" })
+    capture = capture_for(DECK)
+
+    error = assert_raises(Capturers::NotPublic) { Capturers::Document.new(capture, @workdir).call }
+
+    assert_includes error.message, "Google answered a sign-in page for the Google Slides deck"
+    assert_includes capture.log, "not the pptx"
+  end
+
+  test "a Google rate limit stays blocked, so nobody is told to share a shared deck" do
+    stub_request(:get, %r{docs\.google\.com/presentation/d/.*/export/pptx}).to_return(status: 429, body: "")
+    capture = capture_for(DECK)
+
+    error = assert_raises(Capturers::Blocked) { Capturers::Document.new(capture, @workdir).call }
+    assert_equal 429, error.http_status
+  end
+
   test "a shared Google deck exports both files" do
     stub_request(:get, %r{docs\.google\.com/presentation/d/.*/export/pptx})
       .to_return(status: 200, body: "PK deck", headers: { "Content-Type" => "application/vnd.openxmlformats-officedocument.presentationml.presentation" })

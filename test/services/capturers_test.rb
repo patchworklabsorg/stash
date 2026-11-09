@@ -1,9 +1,10 @@
 require "test_helper"
 
 class CapturersTest < ActiveSupport::TestCase
-  test "every error class has a code the captures table accepts" do
-    [ Capturers::Timeout, Capturers::TooLarge, Capturers::ToolFailed, Capturers::NotPublic,
-      Capturers::NotFound, Capturers::Blocked ].each do |klass|
+  test "every error class but Skip has a code the captures table accepts" do
+    classes = Capturers::Error.subclasses - [ Capturers::Skip ]
+    assert_operator classes.size, :>=, 6
+    classes.each do |klass|
       assert_includes Capturers::CODES, klass.code, klass.name
       assert_equal klass.code, klass.new("x").code
     end

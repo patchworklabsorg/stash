@@ -13,14 +13,23 @@ class Capturers::ToolFailureTest < ActiveSupport::TestCase
     FileUtils.rm_rf(@workdir)
   end
 
-  # Subprocess.run that puts the given lines in the capture's log (as the real one does through
-  # the block, which stub_method does not pass on) and exits 128.
-  def failing_run(capture, *lines)
+  # Subprocess.run that answers the given lines as the tool's output and exits 128. The
+  # classification reads that output, not the log, so the URL on the command line never counts.
+  def failing_run(_capture, *lines)
     status = Struct.new(:exitstatus) { def success? = false }.new(128)
     lambda do |*_command, **_options|
-      lines.each { |line| capture.log!(line) }
       Capturers::Subprocess::Result.new(status: status, output: lines.join("\n"))
     end
+  end
+
+  test "the URL on the command line does not decide the code" do
+    archive = create_archive(url: "https://github.com/someone/private-404-login")
+    capture = archive.captures.create!(method_name: "git", status: "running", position: 0)
+
+    stub_method(Capturers::Subprocess, :run, failing_run(capture, "fatal: the remote end hung up unexpectedly")) do
+      assert_raises(Capturers::ToolFailed) { Capturers::Git.new(capture, @workdir).call }
+    end
+    assert_includes capture.log, "private-404-login", "the command line is logged"
   end
 
   test "git clone of a private repository is not_public" do

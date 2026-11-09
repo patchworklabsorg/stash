@@ -54,6 +54,9 @@ module Capturers
       when Net::HTTPNoContent, Net::HTTPAccepted
         return [] if allow_empty
         raise ToolFailed, "GitHub answered #{response.code} for #{uri.path}"
+      when Net::HTTPUnauthorized
+        # Public repositories need no token, so a 401 means GITHUB_TOKEN is bad, not the source.
+        raise ToolFailed, "GitHub rejected GITHUB_TOKEN (401). Fix the token in the env file, then run the archive again."
       when Net::HTTPForbidden, Net::HTTPTooManyRequests
         raise Capturers.http_error(response.code, "GitHub answered #{response.code} for #{uri.path}: " \
                                                   "the API rate limit, or an abuse block. Run the archive again later.")

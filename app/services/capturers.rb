@@ -12,6 +12,8 @@ module Capturers
   class Error < StandardError
     # The HTTP status that caused it, when one did.
     attr_accessor :http_status
+    # The output of the tool that failed, when one did (Base#run!).
+    attr_accessor :tool_output
 
     def self.code
       name.demodulize.underscore

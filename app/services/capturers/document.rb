@@ -29,22 +29,45 @@ module Capturers
 
     def google(kind, id)
       export = GOOGLE_EXPORTS.fetch(kind)
-      native = Download.fetch(google_export_url(kind, id, export[:native]), to: path("document.#{export[:native]}"))
+      native = google_export(kind, id, export[:native], export[:type])
       log("Google export: #{native.byte_size} bytes as #{export[:native]}")
-      pdf = Download.fetch(google_export_url(kind, id, "pdf"), to: path("document.pdf"))
+      pdf = google_export(kind, id, "pdf", "application/pdf")
       log("Google export: #{pdf.byte_size} bytes as pdf")
       [
         output("original", "document.#{export[:native]}", content_type: export[:type], filename: "#{id}.#{export[:native]}"),
         output("rendition", "document.pdf", content_type: "application/pdf", filename: "#{id}.pdf")
       ]
-    rescue NotFound, NotPublic, Blocked => e
-      # Google answers 404 (or 401, 403) for a document that is not shared with anyone with the
-      # link, the same as for one that does not exist. Either way the owner has to act.
-      error = NotPublic.new("Google answered #{e.http_status} for the #{GOOGLE_NAMES.fetch(kind)}: " \
+    end
+
+    # One Google export. A document that is not shared with anyone with the link answers 404,
+    # or 401, or a 302 to the Google sign-in page (a 200 of HTML on another host), the same as
+    # one that does not exist. Every one of those is NotPublic: the owner has to act. A 429
+    # stays Blocked: Google is rate limiting, and later works.
+    def google_export(kind, id, format, expected_type)
+      fetched =
+        begin
+          Download.fetch(google_export_url(kind, id, format), to: path("document.#{format}"))
+        rescue NotFound, NotPublic => e
+          raise not_shared(kind, e.http_status)
+        rescue Blocked => e
+          raise not_shared(kind, e.http_status) if e.http_status == 403
+
+          raise
+        end
+      served = fetched.content_type.to_s
+      if fetched.uri.host != "docs.google.com" || Router::HTML_TYPES.include?(served) || !served.start_with?(expected_type)
+        log("Google export answered #{served} from #{fetched.uri.host}, not the #{format}")
+        raise not_shared(kind, "a sign-in page")
+      end
+      fetched
+    end
+
+    def not_shared(kind, answer)
+      error = NotPublic.new("Google answered #{answer} for the #{GOOGLE_NAMES.fetch(kind)}: " \
                             "it is not shared with anyone with the link, or it does not exist. " \
                             "Ask the owner to share it, then run the archive again.")
-      error.http_status = e.http_status
-      raise error
+      error.http_status = answer if answer.is_a?(Integer)
+      error
     end
 
     def google_export_url(kind, id, format)

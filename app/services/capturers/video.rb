@@ -18,13 +18,17 @@ module Capturers
       classify_tool_failure("yt-dlp",
         not_public: [ /Private video/i, /This video is private/i, /Sign in to confirm/i, /members-only/i,
                       /login required/i, /requires authentication/i, /not available to you/i ],
-        not_found: [ /Video unavailable/i, /has been removed/i, /does not exist/i, /HTTP Error 404/i,
-                     /Unsupported URL/i, /no video/i ]) do
+        not_found: [ /Video unavailable/i, /has been removed/i, /does not exist/i, /HTTP Error 404/i ]) do
         run!(*command, env: { "HOME" => workdir })
       end
 
       media = Dir.glob(path("video.*")).reject { |f| f.end_with?(".info.json", ".png") }.first
-      raise ToolFailed, "yt-dlp wrote no media file" unless media
+      unless media
+        # yt-dlp exits 0 and writes nothing when --max-filesize stops the download.
+        raise TooLarge, "yt-dlp: the video is larger than the limit of #{Capturers.max_bytes} bytes" if capture.log.to_s.match?(/larger than max-filesize/i)
+
+        raise ToolFailed, "yt-dlp wrote no media file"
+      end
 
       outputs = [ output("original", ::File.basename(media), content_type: Marcel::MimeType.for(Pathname.new(media))) ]
       outputs << output("metadata", "video.info.json", content_type: "application/json") if ::File.exist?(path("video.info.json"))

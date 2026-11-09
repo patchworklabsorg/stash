@@ -7,7 +7,7 @@ module Capturers
       log("git: cloning #{clone_url}")
       classify_tool_failure("git clone",
         not_public: [ /Authentication failed/i, /could not read Username/i, /Permission denied/i, /authentication required/i ],
-        not_found: [ /Repository not found/i, /not found/i, /does not exist/i, /Could not resolve host/i ]) do
+        not_found: [ /Repository not found/i, /not found/i, /does not exist/i ]) do
         run!("git", "clone", "--mirror", "--quiet", clone_url, "repo.git")
       end
       run!("git", "-C", "repo.git", "bundle", "create", "../repo.bundle", "--all")

@@ -26,22 +26,27 @@ module Capturers
     def run!(*command, env: {}, timeout: Capturers.timeout)
       log("$ #{command.map { |part| part.to_s.include?(" ") ? part.to_s.inspect : part }.join(" ")}")
       result = Subprocess.run(*command, chdir: workdir, timeout: timeout, env: env) { |line| log(line) }
-      raise ToolFailed, "#{command.first} exited with status #{result.status.exitstatus}" unless result.success?
+      unless result.success?
+        error = ToolFailed.new("#{command.first} exited with status #{result.status.exitstatus}")
+        error.tool_output = result.output
+        raise error
+      end
 
       result
     end
 
-    # Runs the block, and when a tool fails, reads the last lines of the log for the reason:
-    # a sign-in or a share that is missing (NotPublic) or a source that is gone (NotFound). Any
-    # other failure stays a ToolFailed. `tool` names the tool in the message.
+    # Runs the block, and when a tool fails, reads the tool's own output (never the command
+    # line or the URL) for the reason: a sign-in or a share that is missing (NotPublic) or a
+    # source that is gone (NotFound). Any other failure stays a ToolFailed. `tool` names the
+    # tool in the message.
     def classify_tool_failure(tool, not_public:, not_found:)
       yield
     rescue ToolFailed => e
-      tail = capture.log.to_s.last(4.kilobytes)
-      if not_public.any? { |pattern| tail.match?(pattern) }
+      output = e.tool_output.to_s.last(4.kilobytes)
+      if not_public.any? { |pattern| output.match?(pattern) }
         raise NotPublic, "#{tool}: the source is private or needs a sign-in. " \
                          "Ask the owner to make it public, then run the archive again. (#{e.message})"
-      elsif not_found.any? { |pattern| tail.match?(pattern) }
+      elsif not_found.any? { |pattern| output.match?(pattern) }
         raise NotFound, "#{tool}: the source is gone or the URL is wrong. (#{e.message})"
       end
 
