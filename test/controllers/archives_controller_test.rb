@@ -27,6 +27,22 @@ class ArchivesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, archive.public_id
     assert_not_includes response.body, "Delete this archive"
+    # Finished: nothing polls, and the page does not ask Turbo to morph.
+    assert_select "[data-controller=poll]", count: 0
+    assert_select "meta[name=turbo-refresh-method]", count: 0
+  end
+
+  test "an archive that is still running polls for its result and morphs the page" do
+    archive = create_archive_with_captures({ "page" => "running", "git" => "queued" })
+    sign_in_as(:viewer)
+
+    get archive_path(archive)
+
+    assert_response :success
+    assert_select "[data-controller=poll][data-poll-interval-value='5000']", count: 1
+    assert_select "meta[name=turbo-refresh-method][content=morph]", count: 1
+    assert_select "meta[name=turbo-refresh-scroll][content=preserve]", count: 1
+    assert_includes response.body, "This page updates itself as they finish"
   end
 
   test "the list searches by URL, host and note" do

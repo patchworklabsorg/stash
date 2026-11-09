@@ -161,6 +161,8 @@ Stash uses `patchwork-central` (not the restricted database), schema `stash`. Ar
 
 ## Jobs
 
+While an archive runs, its page reloads itself every five seconds (the `poll` Stimulus controller, rendered only on an unfinished archive) and Turbo morphs the new page into the old one, so the captures fill in without a flash and scroll stays put. The first finished page carries no controller, and the polling ends with it. Polling pauses in a hidden tab.
+
 `ArchiveJob` makes the capture rows from the router and enqueues one `CaptureJob` per capture. `CaptureJob` runs one capturer, stores its artifacts, and updates the archive's status. The jobs queue is `captures`, with a small concurrency (`GOOD_JOB_MAX_THREADS`, default 2), because Chromium and yt-dlp are heavy.
 
 ## Environments

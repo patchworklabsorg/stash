@@ -69,12 +69,18 @@
   <% end %>
 
   <% unless @archive.finished? %>
-    <div class="callout callout-info" role="status">
+    <%# The poll controller reloads the page every few seconds; Turbo morphs the result in place. %>
+    <% content_for :head do %>
+      <meta name="turbo-refresh-method" content="morph">
+      <meta name="turbo-refresh-scroll" content="preserve">
+    <% end %>
+
+    <div class="callout callout-info" role="status" data-controller="poll" data-poll-interval-value="5000">
       <%= icon(:loader_circle, size: 18, class: "spinner") %>
 
       <div class="callout-body">
         <p class="callout-title">Captures are running</p>
-        <p>Reload this page in a moment.</p>
+        <p>This page updates itself as they finish.</p>
       </div>
     </div>
   <% end %>
