@@ -32,7 +32,8 @@
       <% else %>
         <%= empty_state "Nothing is archived yet", body: "Patch apps send their submissions here. You can also archive a URL by hand.", icon: :archive do %>
           <% if policy(Archive).create? %>
-            <%= link_to "Archive a URL", new_archive_path, class: "btn btn-primary" %>
+            <%# The page header already has the primary "Archive a URL" button. %>
+            <%= link_to "Archive a URL", new_archive_path, class: "btn btn-secondary" %>
           <% end %>
         <% end %>
       <% end %>
