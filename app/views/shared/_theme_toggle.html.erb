@@ -1,0 +1,20 @@
+<%#
+  Theme switch. Cycles system -> light -> dark -> system; shared/_theme
+  handles the click by delegation. The icon shows the current setting:
+  a monitor while following the device, a sun or a moon when pinned.
+  render "shared/theme_toggle"                   -> inline, for a top bar
+  render "shared/theme_toggle", floating: true   -> pinned to the corner (focus pages)
+%>
+<% classes = ["theme-toggle", ("theme-toggle-floating" if local_assigns[:floating])].compact.join(" ") %>
+
+<button
+  type="button"
+  data-theme-toggle
+  class="<%= classes %>"
+  aria-label="Theme: follows your device. Click to pin light, then dark, then back to your device."
+  title="Theme"
+>
+  <%= icon(:monitor, size: 18, class: "tt-system") %>
+  <%= icon(:sun, size: 18, class: "tt-sun") %>
+  <%= icon(:moon, size: 18, class: "tt-moon") %>
+</button>

@@ -13,8 +13,6 @@ gem "jsbundling-rails"
 gem "turbo-rails"
 # Hotwire's modest JavaScript framework [https://stimulus.hotwired.dev]
 gem "stimulus-rails"
-# Bundle and process CSS [https://github.com/rails/cssbundling-rails]
-gem "cssbundling-rails"
 gem "tailwindcss-rails"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -86,3 +84,6 @@ group :test do
   # Stub Weave's HTTP endpoints in tests
   gem "webmock"
 end
+
+# Lucide, the Patchwork icon set (internal-docs design/icons.md).
+gem "lucide-rails", "~> 0.7.4"

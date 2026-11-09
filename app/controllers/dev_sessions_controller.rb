@@ -3,6 +3,7 @@
 # and this controller checks the mode again on each request.
 class DevSessionsController < ApplicationController
   allow_unauthenticated_access
+  layout "focus"
   before_action :require_dev_mode
 
   PRESETS = [

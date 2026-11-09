@@ -1,17 +1,22 @@
 <% content_for :title, "Not allowed" %>
 
-<div class="mx-auto mt-16 max-w-md">
-  <section class="rounded-lg border border-stone-200 bg-white p-8 dark:border-stone-800 dark:bg-stone-900">
-    <%= render "shared/brand_mark" %>
+<div class="page page-narrow">
+  <div class="card">
+    <div class="card-body space-y-4">
+      <div class="flex items-center gap-3">
+        <%= icon(:shield_off, size: 28, class: "text-ink-soft") %>
 
-    <h1 class="mt-4 text-2xl font-semibold">403: Not allowed</h1>
+        <h1 class="page-title">403: Not allowed</h1>
+      </div>
 
-    <p class="mt-2 text-sm text-stone-600 dark:text-stone-400">You do not have a Stash role that allows this.</p>
+      <p class="text-ink-soft">You do not have a Stash role that allows this.</p>
 
-    <p class="mt-4 text-sm">
-      Stash roles are <code>viewer</code>, <code>archivist</code> and <code>admin</code>. Ask a Weave admin for one.
-    </p>
+      <p>
+        Stash roles are <code class="code-chip">viewer</code>, <code class="code-chip">archivist</code> and
+        <code class="code-chip">admin</code>. Ask a Weave admin for one.
+      </p>
 
-    <p class="mt-6 text-sm"><%= link_to "Back to sign-in", sign_in_path, class: "underline" %></p>
-  </section>
+      <p><%= link_to "Back to sign-in", sign_in_path, class: "link" %></p>
+    </div>
+  </div>
 </div>

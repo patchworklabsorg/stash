@@ -57,6 +57,8 @@ module Authentication
   end
 
   def render_forbidden
-    render "errors/forbidden", status: :forbidden
+    # The member layout, whichever controller raised: the sign-in controllers use the focus
+    # layout, and the page is a card with the top bar, not a patch.
+    render "errors/forbidden", status: :forbidden, layout: "application"
   end
 end

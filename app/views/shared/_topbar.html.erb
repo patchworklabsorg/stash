@@ -1,0 +1,76 @@
+<%# The member-pages top bar (layouts/application). The same shell as Weave's. %>
+<header class="topbar" data-controller="drawer" data-action="keydown@window->drawer#keydown">
+  <div class="topbar-inner">
+    <%= render "shared/wordmark" %>
+
+    <% if signed_in? %>
+      <nav class="topbar-nav" aria-label="Main">
+        <%= nav_link "Archives", archives_path, icon: :archive, active: controller_name == "archives" && action_name != "new" %>
+
+        <% if policy(Archive).create? %>
+          <%= nav_link "Archive a URL", new_archive_path, icon: :plus, exact: true %>
+        <% end %>
+
+        <% if current_user.admin? %>
+          <%= nav_link "Jobs", "/admin/jobs", icon: :activity, active: false %>
+        <% end %>
+      </nav>
+    <% end %>
+
+    <div class="topbar-end">
+      <%= render "shared/theme_toggle" %>
+
+      <% if signed_in? %>
+        <span class="hidden lg:inline-flex items-center gap-2 text-sm">
+          <span class="font-medium"><%= current_user.display_name %></span>
+          <span class="sr-only">Roles:</span>
+
+          <% current_user.roles.each do |role| %>
+            <%= badge role, tone: (role == "admin" ? :violet : :neutral) %>
+          <% end %>
+        </span>
+
+        <%= button_to sign_out_path, method: :delete, class: "btn btn-quiet btn-sm hidden lg:inline-flex", form_class: "inline-block", "aria-label": "Sign out", title: "Sign out" do %>
+          <%= icon(:log_out) %><span class="topbar-btn-label">Sign out</span>
+        <% end %>
+
+        <button
+          type="button"
+          class="btn btn-quiet btn-sm btn-icon topbar-menu-btn"
+          aria-label="Open menu"
+          aria-expanded="false"
+          data-drawer-target="button"
+          data-action="drawer#toggle"
+        >
+          <%= icon(:menu, size: 18) %>
+        </button>
+      <% end %>
+    </div>
+  </div>
+
+  <% if signed_in? %>
+    <nav class="topbar-sheet" data-drawer-target="panel" aria-label="Main menu">
+      <%= nav_link "Archives", archives_path, icon: :archive, active: controller_name == "archives" && action_name != "new" %>
+
+      <% if policy(Archive).create? %>
+        <%= nav_link "Archive a URL", new_archive_path, icon: :plus, exact: true %>
+      <% end %>
+
+      <% if current_user.admin? %>
+        <%= nav_link "Jobs", "/admin/jobs", icon: :activity, active: false %>
+      <% end %>
+
+      <div class="px-3 py-2 text-sm text-ink-soft">
+        <%= current_user.display_name %>
+
+        <% current_user.roles.each do |role| %>
+          <%= badge role, tone: (role == "admin" ? :violet : :neutral) %>
+        <% end %>
+      </div>
+
+      <%= button_to sign_out_path, method: :delete, class: "nav-link w-full", form_class: "contents" do %>
+        <%= icon(:log_out) %><span>Sign out</span>
+      <% end %>
+    </nav>
+  <% end %>
+</header>

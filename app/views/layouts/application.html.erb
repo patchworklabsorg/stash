@@ -1,105 +1,27 @@
+<%# The member layout: the top bar and a .page column. Sign-in and the dev sign-in use layouts/focus. %>
 <!DOCTYPE html>
 
 <html lang="en">
   <head>
-    <title><%= content_for(:title) ? "#{content_for(:title)} | Stash" : "Stash" %></title>
-
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="application-name" content="Stash">
-    <meta name="color-scheme" content="light dark">
-    <meta name="robots" content="noindex, nofollow">
-
-    <%= csrf_meta_tags %>
-    <%= csp_meta_tag %>
-
-    <%# ?v=2: the files in public/ get a one year cache header, and the placeholder had these names. %>
-    <link rel="icon" href="/icon.svg?v=2" type="image/svg+xml">
-    <link rel="icon" href="/icon.png?v=2" type="image/png">
-    <link rel="apple-touch-icon" href="/icon.png?v=2">
-
-    <%#
-      Only the built file (bun run build:css). `:app` also linked the Tailwind source, whose
-      `@import "tailwindcss"` 404s in the browser, and tailwindcss-rails' copy of the same styles.
-    %>
-    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
+    <title><%= [content_for(:title), "Stash"].compact_blank.join(" · ") %></title>
+    <%= render "shared/head" %>
   </head>
 
-  <body class="min-h-screen bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
+  <body class="bg-quilt text-ink font-sans min-h-dvh flex flex-col">
+    <a href="#main" class="skip-link">Skip to content</a>
     <%= render "shared/staging_badge" %>
+    <%= render "shared/topbar" %>
 
-    <a
-      class="
-        sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:rounded focus:bg-amber-300
-        focus:px-3 focus:py-2 focus:text-stone-900
-      "
-      href="#main"
-    >
-      Skip to content
-    </a>
-
-    <header class="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
-      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-        <%= link_to root_path, class: "flex items-center gap-2 text-lg font-semibold tracking-tight" do %>
-          <%= render "shared/brand_mark" %> Stash
-        <% end %>
-
-        <% if signed_in? %>
-          <nav class="flex items-center gap-4 text-sm" aria-label="Main">
-            <%= nav_link "Archives", archives_path, "archives" %>
-
-            <% if policy(Archive).create? %>
-              <%= nav_link "Archive a URL", new_archive_path, "new" %>
-            <% end %>
-
-            <% if current_user.admin? %>
-              <%= link_to "Jobs", "/admin/jobs", class: "text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100" %>
-            <% end %>
-          </nav>
-
-          <div class="ml-auto flex items-center gap-3 text-sm">
-            <span class="font-medium"><%= current_user.display_name %></span>
-
-            <span class="flex gap-1">
-              <span class="sr-only">Roles:</span>
-
-              <% current_user.roles.each do |role| %>
-                <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300"><%= role %></span>
-              <% end %>
-            </span>
-
-            <%= button_to "Sign out", sign_out_path, method: :delete, class: "text-stone-600 underline hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100" %>
-          </div>
-        <% end %>
-      </div>
-    </header>
-
-    <main id="main" class="mx-auto max-w-6xl px-4 py-6">
-      <% if notice.present? %>
-        <p
-          class="
-            mb-4 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-900
-            dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-100
-          "
-          role="status"
-        >
-          <%= notice %>
-        </p>
-      <% end %>
-
-      <% if alert.present? %>
-        <p
-          class="
-            mb-4 rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-800
-            dark:bg-rose-950 dark:text-rose-100
-          "
-          role="alert"
-        >
-          <%= alert %>
-        </p>
-      <% end %>
-
+    <main id="main" class="flex-1" tabindex="-1">
       <%= yield %>
     </main>
+
+    <footer class="page pt-0 pb-8 text-xs text-ink-faint flex flex-wrap gap-x-4 gap-y-1">
+      <span>Stash is the Patchwork Labs archive.</span>
+      <a href="https://github.com/patchworklabsorg/stash" class="link-quiet" target="_blank" rel="noopener noreferrer">Source</a>
+      <a href="mailto:security@patchworklabs.org" class="link-quiet">Report a security issue</a>
+    </footer>
+
+    <div id="flash"><%= render "shared/flash" %></div>
   </body>
 </html>
