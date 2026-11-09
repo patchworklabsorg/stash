@@ -88,6 +88,19 @@ Each capturer has a timeout (`CAPTURE_TIMEOUT`, default 10 minutes) and a size l
 
 Every external tool runs in a subprocess with a clean environment and the URL as an argument, never through a shell string. A capturer never runs code from the archived content.
 
+### Dynamic pages
+
+Many pages draw themselves as the reader scrolls: sections start at opacity 0 and fade in through an IntersectionObserver, images load lazily, animations run for seconds. A capture of the page as first loaded is mostly blank below the fold. So the `page` capturer, before it writes a file:
+
+1. Asks for `prefers-reduced-motion: reduce` and sets the animation playback rate to 50x, both through the DevTools protocol, before the page loads. Pages that honor reduced motion skip their entrance animations. The ones that do not are over in a moment.
+2. Waits for the network to go idle (10 seconds at most), then for `document.fonts.ready`.
+3. Walks the page one viewport (900px) at a time, a quarter second per step, at most 60 steps, then returns to the top. Observers fire and lazy images load on the way.
+4. Waits for the network to go idle again, then one second for the last reveals.
+
+Then the MHTML, the full-page PNG and the PDF are written from that state. The MHTML keeps the DOM as revealed, so the archived copy is not blank either. A page that pins sections to the scroll position (a scroll-driven hero) still looks like a long strip in the screenshot. That is the page as it is; the PDF and the MHTML keep the content.
+
+`bin/capture-sample <urls>` runs the capturers on a list of URLs without the database and writes an `index.html` with every screenshot and log, to check a change like this against real pages before it ships.
+
 ## Who can do what
 
 Sign-in is Weave OIDC, as in Quilt. The roles come from the `roles` claim:
