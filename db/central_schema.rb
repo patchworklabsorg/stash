@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_060001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_09_010000) do
   create_schema "stash"
 
   # These are extensions that must be enabled in order to support this database
@@ -102,6 +102,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_060001) do
     t.datetime "finished_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "error_code"
     t.index ["archive_id", "method_name"], name: "index_captures_on_archive_id_and_method_name", unique: true
     t.index ["status"], name: "index_captures_on_status"
   end

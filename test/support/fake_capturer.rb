@@ -27,6 +27,12 @@ module FakeCapturer
     end
   end
 
+  class Private < Capturers::Base
+    def call
+      raise Capturers::NotPublic, "ask the owner"
+    end
+  end
+
   # Runs the block with Capturers::Router.capturer_for answering the given class for every method.
   def with_capturer(klass, &)
     stub_method(Capturers::Router, :capturer_for, ->(_method) { klass }, &)

@@ -46,12 +46,22 @@ module Capturers
       when Net::HTTPSuccess then raw ? response.body : JSON.parse(response.body)
       when Net::HTTPNotFound
         return nil if allow_missing
-        raise ToolFailed, "GitHub answered 404 for #{uri.path}: the repository is private or gone"
+        # GitHub answers 404 for a private repository too, so the owner is the one to ask.
+        error = NotPublic.new("GitHub answered 404 for #{uri.path}: the repository is private or gone. " \
+                              "Ask the owner to make it public, then run the archive again.")
+        error.http_status = 404
+        raise error
       when Net::HTTPNoContent, Net::HTTPAccepted
         return [] if allow_empty
         raise ToolFailed, "GitHub answered #{response.code} for #{uri.path}"
+      when Net::HTTPUnauthorized
+        # Public repositories need no token, so a 401 means GITHUB_TOKEN is bad, not the source.
+        raise ToolFailed, "GitHub rejected GITHUB_TOKEN (401). Fix the token in the env file, then run the archive again."
+      when Net::HTTPForbidden, Net::HTTPTooManyRequests
+        raise Capturers.http_error(response.code, "GitHub answered #{response.code} for #{uri.path}: " \
+                                                  "the API rate limit, or an abuse block. Run the archive again later.")
       else
-        raise ToolFailed, "GitHub answered #{response.code} for #{uri.path}"
+        raise Capturers.http_error(response.code, "GitHub answered #{response.code} for #{uri.path}")
       end
     rescue SocketError, SystemCallError, Net::OpenTimeout, Net::ReadTimeout, OpenSSL::SSL::SSLError => e
       raise ToolFailed, "could not reach GitHub: #{e.class}"

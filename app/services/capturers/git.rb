@@ -5,7 +5,11 @@ module Capturers
     def call
       clone_url = clone_url_for(url)
       log("git: cloning #{clone_url}")
-      run!("git", "clone", "--mirror", "--quiet", clone_url, "repo.git")
+      classify_tool_failure("git clone",
+        not_public: [ /Authentication failed/i, /could not read Username/i, /Permission denied/i, /authentication required/i ],
+        not_found: [ /Repository not found/i, /not found/i, /does not exist/i ]) do
+        run!("git", "clone", "--mirror", "--quiet", clone_url, "repo.git")
+      end
       run!("git", "-C", "repo.git", "bundle", "create", "../repo.bundle", "--all")
       refs = run!("git", "-C", "repo.git", "for-each-ref", "--format=%(objectname) %(refname)").output
       head = run!("git", "-C", "repo.git", "symbolic-ref", "HEAD").output.strip

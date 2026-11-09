@@ -60,22 +60,48 @@ GET /api/v1/archives/arc_4k8xJm2pN9qW
   "created_at": "2026-11-08T05:00:00Z",
   "completed_at": "2026-11-08T05:01:12Z",
   "page_url": "https://stash.patchworklabs.org/archives/arc_4k8xJm2pN9qW",
+  "problem": null,
   "captures": [
     {
-      "id": "cap_...", "method": "github", "status": "done", "error": null,
+      "id": "cap_...", "method": "github", "status": "done", "error": null, "error_code": null,
       "started_at": "...", "finished_at": "...",
       "artifacts": [
         { "id": "art_...", "role": "metadata", "filename": "github.json", "content_type": "application/json",
           "byte_size": 48213, "sha256": "...", "download_url": "https://stash.patchworklabs.org/artifacts/art_..." }
       ]
     },
-    { "id": "cap_...", "method": "git", "status": "done", "error": null, "artifacts": [ "..." ] },
-    { "id": "cap_...", "method": "page", "status": "failed", "error": "ToolFailed: Chromium: ...", "artifacts": [] }
+    { "id": "cap_...", "method": "git", "status": "done", "error": null, "error_code": null, "artifacts": [ "..." ] },
+    { "id": "cap_...", "method": "page", "status": "failed", "error": "ToolFailed: Chromium: ...", "error_code": "tool_failed", "artifacts": [] }
   ]
 }
 ```
 
 `status` is one of `queued`, `running`, `done`, `partial` (some captures failed), `failed`. Poll until `completed_at` is set. A capture's `status` is `queued`, `running`, `done`, `failed` or `skipped`.
+
+### When a capture fails
+
+A failed capture carries `error` (the message, for a log) and `error_code` (the reason, for your code). The archive carries `problem`: the failed capture that matters most to the person who submitted the URL, or `null` while nothing has failed. Show `problem.hint` to that person, and `problem.message` to whoever debugs.
+
+```json
+"problem": {
+  "code": "not_public",
+  "method": "document",
+  "message": "NotPublic: Google answered 404 for the Google Slides deck: it is not shared with anyone with the link, or it does not exist. Ask the owner to share it, then run the archive again.",
+  "hint": "The source is private. Ask the owner to share it with anyone with the link, or to send a public URL, then run the archive again."
+}
+```
+
+| `error_code` | Meaning | Who fixes it |
+|---|---|---|
+| `not_public` | the source needs a sign-in or a share: a private repository, a Google document that is not shared with anyone with the link, a private video | the submitter: share it, or send a public URL |
+| `not_found` | nothing is at the URL: 404, 410, a deleted video, a repository that is gone | the submitter: send the right URL |
+| `blocked` | the host refused the archiver: 403, 429, an anti-bot wall | nobody; try again later |
+| `too_large` | the file passed `CAPTURE_MAX_BYTES` | Stash's operators, or a smaller source |
+| `timeout` | the capture ran past `CAPTURE_TIMEOUT` | try again; then Stash's operators |
+| `tool_failed` | the tool failed and nothing more specific is known | try again; then Stash's operators |
+| `unexpected` | Stash itself hit an error | Stash's operators |
+
+The codes come in that order of importance: when two captures fail, `problem` names the one with the earlier code. A `partial` archive with a `problem` of `not_public` means Stash kept what it could (often the `page` capture of the sign-in wall) and the source still needs the owner's action. Run the archive again from its page after the fix.
 
 `download_url` needs a signed-in person: it is a Stash page URL that redirects to a short-lived storage URL. An app that needs the bytes should ask for that later; today the API gives the checksums and the sizes. Page URLs hold the id without its prefix (`/archives/4k8xJm2pN9qW`); the API accepts both forms.
 

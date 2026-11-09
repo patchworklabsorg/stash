@@ -108,11 +108,36 @@ class Api::V1::ArchivesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     body = response.parsed_body
     assert_equal "done", body["status"]
+    assert_nil body["problem"]
     capture = body["captures"].sole
     assert_equal "page", capture["method"]
+    assert_nil capture["error_code"]
     art = capture["artifacts"].sole
     assert_equal artifact.public_id, art["id"]
     assert_includes art["download_url"], "/artifacts/#{artifact.encoded_id}"
+  end
+
+  test "show carries the problem of a failed archive, so the patch app can say what to fix" do
+    archive = create_archive_with_captures({ "document" => "failed", "page" => "done" })
+    archive.captures.find_by(method_name: "document").update!(
+      error: "NotPublic: Google answered 404 for the Google Slides deck: it is not shared with anyone with the link, or it does not exist. Ask the owner to share it, then run the archive again.",
+      error_code: "not_public"
+    )
+
+    with_fake_weave do
+      stub_introspection(token: TOKEN, scope: "stash")
+      get api_v1_archive_path(archive.public_id), headers: { "Authorization" => "Bearer #{TOKEN}" }
+    end
+
+    assert_response :success
+    body = response.parsed_body
+    assert_equal "partial", body["status"]
+    assert_equal "not_public", body["problem"]["code"]
+    assert_equal "document", body["problem"]["method"]
+    assert_includes body["problem"]["message"], "Google Slides deck"
+    assert_includes body["problem"]["hint"], "Ask the owner to share it"
+    document = body["captures"].find { |c| c["method"] == "document" }
+    assert_equal "not_public", document["error_code"]
   end
 
   test "show for an unknown id or a raw UUID is 404" do

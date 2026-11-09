@@ -54,6 +54,20 @@
     </div>
   </header>
 
+  <% if (problem = @archive.problem) %>
+    <div class="callout callout-danger" role="status">
+      <%= icon(:triangle_alert, size: 18) %>
+
+      <div class="callout-body">
+        <p class="callout-title"><%= problem[:hint] %></p>
+
+        <p class="break-words">
+          <%= badge problem[:code].tr("_", " "), tone: :danger %> <%= problem[:method] %>: <%= problem[:message] %>
+        </p>
+      </div>
+    </div>
+  <% end %>
+
   <% unless @archive.finished? %>
     <div class="callout callout-info" role="status">
       <%= icon(:loader_circle, size: 18, class: "spinner") %>
@@ -71,6 +85,10 @@
         <div class="flex flex-wrap items-center gap-2">
           <h2 class="card-title"><%= capture.method_name %></h2>
           <%= status_badge(capture.status) %>
+
+          <% if capture.error_code.present? %>
+            <%= badge capture.error_code.tr("_", " "), tone: :outline %>
+          <% end %>
 
           <% if capture.duration %>
             <span class="text-xs text-ink-faint"><%= capture.duration.round(1) %> s</span>

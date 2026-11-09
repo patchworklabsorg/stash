@@ -12,7 +12,7 @@ class CaptureJob < ApplicationJob
   def perform(capture)
     return if capture.finished?
 
-    capture.update!(status: "running", started_at: Time.current, error: nil)
+    capture.update!(status: "running", started_at: Time.current, error: nil, error_code: nil)
     Dir.mktmpdir("stash-#{capture.method_name}-") do |workdir|
       outputs = capture.capturer.new(capture, workdir).call
       store(capture, outputs)
@@ -21,9 +21,9 @@ class CaptureJob < ApplicationJob
   rescue Capturers::Skip => e
     finish(capture, "skipped", error: e.message)
   rescue Capturers::Error => e
-    finish(capture, "failed", error: "#{e.class.name.demodulize}: #{e.message}")
+    finish(capture, "failed", error: "#{e.class.name.demodulize}: #{e.message}", error_code: e.code)
   rescue StandardError => e
-    finish(capture, "failed", error: "#{e.class}: #{e.message.to_s.first(500)}")
+    finish(capture, "failed", error: "#{e.class}: #{e.message.to_s.first(500)}", error_code: "unexpected")
     raise
   end
 
@@ -41,8 +41,11 @@ class CaptureJob < ApplicationJob
     end
   end
 
-  def finish(capture, status, error: nil)
-    capture.update!(status: status, error: error, finished_at: Time.current)
+  def finish(capture, status, error: nil, error_code: nil)
+    # An error class that is not in CODES (a bare Capturers::Error, a new subclass) must not
+    # leave the capture running on a validation error.
+    error_code = "unexpected" if error_code && Capturers::CODES.exclude?(error_code)
+    capture.update!(status: status, error: error, error_code: error_code, finished_at: Time.current)
     capture.archive.refresh_status!
   end
 end
