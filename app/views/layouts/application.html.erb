@@ -17,7 +17,11 @@
     <link rel="icon" href="/icon.png?v=2" type="image/png">
     <link rel="apple-touch-icon" href="/icon.png?v=2">
 
-    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%#
+      Only the built file (bun run build:css). `:app` also linked the Tailwind source, whose
+      `@import "tailwindcss"` 404s in the browser, and tailwindcss-rails' copy of the same styles.
+    %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", type: "module" %>
   </head>
 

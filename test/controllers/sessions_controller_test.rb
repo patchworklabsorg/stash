@@ -11,6 +11,13 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Sign in to Stash"
   end
 
+  test "the layout links only the built stylesheet" do
+    get sign_in_path
+
+    assert_select "link[rel=stylesheet]", count: 1
+    assert_select "link[rel=stylesheet][href^=?]", "/assets/application-"
+  end
+
   test "the Weave button submits without Turbo, so the browser follows the redirect to Weave" do
     with_fake_weave do
       get sign_in_path
