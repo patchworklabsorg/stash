@@ -38,7 +38,11 @@ class Capturers::PageTest < ActiveSupport::TestCase
     end
 
     def execute(script)
-      @events << [ :scroll, script[/scrollTo\(0, (\d+)\)/, 1].to_i ]
+      if script.include?("scrollTo")
+        @events << [ :scroll, script[/scrollTo\(0, (\d+)\)/, 1].to_i ]
+      else
+        @events << [ :execute, script ]
+      end
     end
 
     def mhtml(path:) = write(path)
@@ -53,6 +57,7 @@ class Capturers::PageTest < ActiveSupport::TestCase
     def write(path)
       File.write(path, "x")
       @files << File.basename(path)
+      @events << [ :write, File.basename(path) ]
     end
   end
 
@@ -113,6 +118,19 @@ class Capturers::PageTest < ActiveSupport::TestCase
 
     assert_equal Capturers::Page::SCROLL_STEPS + 1, page.scrolls.size
     assert_equal 0, page.scrolls.last
+  end
+
+  test "pauses media and stops animation frames after the walk and before the files" do
+    page = FakePage.new(height: 1800)
+    run_capture(page)
+
+    freeze = page.events.index { |event| event[0] == :execute && event[1].include?("requestAnimationFrame") }
+    last_scroll = page.events.rindex { |event| event[0] == :scroll }
+    first_write = page.events.index { |event| event[0] == :write }
+    assert freeze, "the freeze script runs"
+    assert_operator last_scroll, :<, freeze
+    assert_operator freeze, :<, first_write
+    assert_includes page.events[freeze][1], "media.pause()"
   end
 
   test "writes the three files and returns them in role order" do

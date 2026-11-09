@@ -96,6 +96,7 @@ Many pages draw themselves as the reader scrolls: sections start at opacity 0 an
 2. Waits for the network to go idle (10 seconds at most), then for `document.fonts.ready`.
 3. Walks the page one viewport (900px) at a time, a quarter second per step, at most 60 steps, then returns to the top. Observers fire and lazy images load on the way.
 4. Waits for the network to go idle again, then one second for the last reveals.
+5. Freezes the page: pauses every video and audio element and takes away `requestAnimationFrame`, so a render loop keeps its last frame while the files are written. A software-rendered WebGL scene that kept drawing made one screenshot take 16 minutes.
 
 Chromium runs with SwiftShader (`--use-angle=swiftshader`), so WebGL draws in software and a canvas site renders without a GPU; with the GPU off, such a page captured as a blank gradient. A heavy page can take the renderer down once (`Ferrum::DeadBrowserError`); the capturer then tries once more in a new browser. The log notes the elapsed seconds at each step.
 

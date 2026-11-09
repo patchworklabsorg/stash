@@ -55,6 +55,7 @@ module Capturers
       reveal(page)
       wait_for_idle(page, "images kept loading after the scroll")
       self.class.sleep_for(SETTLE)
+      freeze(page)
 
       log("saving the MHTML (#{elapsed}s)")
       page.mhtml(path: path("page.mhtml"))
@@ -99,6 +100,20 @@ module Capturers
       log("the scroll stopped early: #{e.message.to_s.first(120)}")
     end
 
+    # Stops the page from drawing new frames while the files are written: pauses media and
+    # takes away requestAnimationFrame, so a render loop (a WebGL scene, a carousel) keeps its
+    # last frame. Without this, a software-rendered WebGL scene made one screenshot take
+    # 16 minutes, because every frame it kept drawing had to be composited first.
+    def freeze(page)
+      page.execute(<<~JS)
+        document.querySelectorAll("video, audio").forEach((media) => { try { media.pause(); } catch (_) {} });
+        window.requestAnimationFrame = () => 0;
+        window.cancelAnimationFrame = () => {};
+      JS
+    rescue Ferrum::Error => e
+      log("could not freeze the page: #{e.message.to_s.first(120)}")
+    end
+
     # Up to five seconds for the web fonts, so text does not reflow between the files.
     def wait_for_fonts(page)
       20.times do
@@ -122,6 +137,7 @@ module Capturers
       yield browser
     ensure
       browser&.quit
+      log("browser closed (#{elapsed}s)") if @started
     end
 
     # The tests swap this out too, so the walk takes no time there.
