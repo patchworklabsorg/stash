@@ -1,0 +1,105 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Runs the capturers against a list of URLs and writes the outputs where you can look at them.
+# No database rows: a fake capture stands in for the model, so this never touches an archive.
+#
+#   bin/capture-sample https://example.com/ https://github.com/rails/rails
+#   bin/capture-sample --methods page --out tmp/capture-sample urls.txt
+#
+# Each URL gets a directory under --out (default tmp/capture-sample) with the files the
+# capturers wrote, a log.txt, and the run writes index.html at the top with every screenshot
+# and log side by side. Open it in a browser. The page capturer needs Chromium: set BROWSER_PATH
+# on a Mac (see .env.example).
+require "optparse"
+
+options = { out: "tmp/capture-sample", methods: nil }
+OptionParser.new do |parser|
+  parser.on("--out DIR", "Where to write (default tmp/capture-sample)") { |dir| options[:out] = dir }
+  parser.on("--methods LIST", "Comma-separated capture methods to run, default: what the router picks") do |list|
+    options[:methods] = list.split(",").map(&:strip)
+  end
+end.parse!
+
+urls = ARGV.flat_map { |arg| ::File.file?(arg) ? ::File.readlines(arg, chomp: true) : [ arg ] }
+          .map(&:strip).reject { |line| line.empty? || line.start_with?("#") }
+abort "Usage: bin/capture-sample [--out DIR] [--methods page,git] <url or file>..." if urls.empty?
+
+ENV["RAILS_ENV"] ||= "development"
+require_relative "../config/environment"
+require "fileutils"
+require "erb"
+require "digest"
+
+FakeArchive = Struct.new(:url)
+FakeCapture = Struct.new(:archive, :method_name, :log) do
+  def log!(line)
+    self.log = "#{log}#{line.to_s.chomp}\n"
+    $stderr.puts "  #{line.to_s.chomp}"
+  end
+end
+
+out = ::File.expand_path(options[:out], Dir.pwd)
+FileUtils.mkdir_p(out)
+results = []
+
+urls.each do |url|
+  # The host and path, readable, plus a hash so two URLs never share a directory.
+  slug = url.sub(%r{\Ahttps?://}, "").gsub(/[^a-z0-9]+/i, "-").squeeze("-").delete_suffix("-").first(72) +
+         "-" + Digest::SHA256.hexdigest(url).first(8)
+  methods = options[:methods] || Capturers::Router.methods_for(url)
+  $stderr.puts "#{url}: #{methods.join(", ")}"
+
+  methods.each do |method_name|
+    dir = ::File.join(out, slug, method_name)
+    FileUtils.rm_rf(dir)
+    FileUtils.mkdir_p(dir)
+    capture = FakeCapture.new(FakeArchive.new(url), method_name, +"")
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    outputs = []
+    error = nil
+    begin
+      outputs = Capturers::Router::CAPTURERS.fetch(method_name).constantize.new(capture, dir).call
+    rescue StandardError => e
+      error = "#{e.class}: #{e.message}"
+      $stderr.puts "  FAILED #{error}"
+    end
+    seconds = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(1)
+    ::File.write(::File.join(dir, "log.txt"), capture.log)
+    files = outputs.map { |o| { role: o.role, path: ::File.join(slug, method_name, ::File.basename(o.path)), bytes: ::File.size(o.path) } }
+    results << { url: url, method: method_name, seconds: seconds, error: error, files: files, log: capture.log }
+  end
+end
+
+template = ERB.new(<<~'HTML', trim_mode: "-")
+  <!doctype html>
+  <meta charset="utf-8">
+  <title>Capture sample</title>
+  <style>
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 24px; color: #222; }
+    section { border-top: 1px solid #ccc; padding: 16px 0; }
+    h2 { font-size: 16px; margin: 0 0 4px; word-break: break-all; }
+    .meta { color: #666; font-size: 12px; }
+    .fail { color: #b00; }
+    img { max-width: 100%; max-height: 900px; border: 1px solid #ccc; display: block; margin: 8px 0; }
+    pre { background: #f4f4f4; padding: 8px; font-size: 11px; max-height: 240px; overflow: auto; }
+    .row { display: flex; gap: 16px; align-items: flex-start; }
+    .row > * { flex: 1; min-width: 0; }
+  </style>
+  <h1>Capture sample, <%= Time.now.utc.strftime("%Y-%m-%d %H:%M UTC") %></h1>
+  <%- results.each do |r| -%>
+  <section>
+    <h2><a href="<%= ERB::Util.h(r[:url]) %>"><%= ERB::Util.h(r[:url]) %></a> <span class="meta">(<%= r[:method] %>, <%= r[:seconds] %> s)</span></h2>
+    <%- if r[:error] -%><p class="fail"><%= ERB::Util.h(r[:error]) %></p><%- end -%>
+    <p class="meta"><%= r[:files].map { |f| "#{ERB::Util.h(f[:role])}: <a href='#{ERB::Util.h(f[:path])}'>#{ERB::Util.h(::File.basename(f[:path]))}</a> (#{f[:bytes]} bytes)" }.join(" · ") %></p>
+    <div class="row">
+      <%- r[:files].select { |f| f[:path].end_with?(".png", ".jpg", ".jpeg", ".webp") }.each do |f| -%>
+      <a href="<%= ERB::Util.h(f[:path]) %>"><img src="<%= ERB::Util.h(f[:path]) %>" alt="<%= ERB::Util.h(f[:role]) %>" loading="lazy"></a>
+      <%- end -%>
+      <pre><%= ERB::Util.html_escape(r[:log]) %></pre>
+    </div>
+  </section>
+  <%- end -%>
+HTML
+::File.write(::File.join(out, "index.html"), template.result(binding))
+$stderr.puts "Wrote #{::File.join(out, "index.html")}"
