@@ -134,9 +134,16 @@
         <% end %>
 
         <% screenshot = capture.artifacts.find { |a| a.role == "screenshot" } %>
+        <% view = capture.artifacts.find(&:view?) %>
+
+        <% if view %>
+          <%= link_to view_artifact_path(view), class: "btn btn-primary" do %>
+            <%= icon(:eye) %>View the archived page
+          <% end %>
+        <% end %>
 
         <% if screenshot %>
-          <%= link_to artifact_path(screenshot), class: "block" do %>
+          <%= link_to (view ? view_artifact_path(view) : artifact_path(screenshot)), class: "block" do %>
             <%= image_tag artifact_path(screenshot), alt: "Screenshot of #{@archive.url}", class: "max-h-96 w-full rounded-[var(--radius-control)] border border-hairline object-cover object-top", loading: "lazy" %>
           <% end %>
         <% end %>

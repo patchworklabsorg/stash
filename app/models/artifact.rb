@@ -5,12 +5,14 @@
 #   rendition   a derived copy in a viewable form: the print PDF of a page, the PDF of a deck
 #   screenshot  a PNG of the page or a poster of a video
 #   metadata    JSON or text about the thing: repo metadata, refs, yt-dlp info, a normalized post
+#   view        a copy the browser shows on the archive page: the page as one HTML file, with
+#               its styles and images inlined (Capturers::Mhtml), in a sandboxed frame
 class Artifact < CentralRecord
   # The prefix "art" is registered in internal-docs (encoded-id-prefixes.md).
   include EncodedIds::UuidIdentifiable
   set_public_id_prefix "art"
 
-  ROLES = %w[original rendition screenshot metadata].freeze
+  ROLES = %w[original rendition screenshot metadata view].freeze
 
   belongs_to :capture, inverse_of: :artifacts
   has_one :archive, through: :capture
@@ -32,5 +34,9 @@ class Artifact < CentralRecord
 
   def text?
     content_type.start_with?("text/") || content_type == "application/json"
+  end
+
+  def view?
+    role == "view"
   end
 end

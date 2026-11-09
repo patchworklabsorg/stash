@@ -1,0 +1,35 @@
+<% content_for :title, "View · #{@archive.host}" %>
+
+<div class="page page-wide space-y-4">
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+    <%= link_to archive_path(@archive), class: "link-quiet inline-flex items-center gap-1" do %>
+      <%= icon(:arrow_left) %>Back to the archive
+    <% end %>
+
+    <span class="text-ink-soft">
+      Archived copy of <code class="code-chip"><%= @archive.url %></code> from
+      <%= time_tag @artifact.created_at, @artifact.created_at.utc.strftime("%Y-%m-%d %H:%M UTC") %>. Scripts do not run,
+      and nothing is loaded from the live site, so it never learns that you looked. Links open the live site in a new
+      tab.
+    </span>
+
+    <span class="ml-auto flex gap-2">
+      <%= link_to artifact_path(@artifact), class: "btn btn-quiet btn-sm" do %>
+        <%= icon(:download) %>Download the HTML
+      <% end %>
+
+      <%= link_to @archive.url, class: "btn btn-secondary btn-sm", rel: "noopener noreferrer nofollow", target: "_blank" do %>
+        <%= icon(:external_link) %>Live site
+      <% end %>
+    </span>
+  </div>
+
+  <%# The frame has no scripts, no same-origin rights and no network (ArtifactsController::FRAME_CSP). %>
+  <iframe
+    src="<%= frame_artifact_path(@artifact) %>"
+    title="Archived copy of <%= @archive.url %>"
+    sandbox="allow-popups allow-popups-to-escape-sandbox"
+    referrerpolicy="no-referrer"
+    class="h-[80vh] w-full rounded-[var(--radius-card)] border border-hairline bg-white"
+  ></iframe>
+</div>

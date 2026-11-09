@@ -42,9 +42,12 @@ module Capturers
         retry if crashed?(e) && attempts < 2 && elapsed < Capturers.timeout / 2
         raise
       end
+      # The copy a browser can show: the MHTML as one HTML file (Capturers::Mhtml).
+      ::File.write(path("page.html"), Mhtml.inline(path("page.mhtml")))
 
       [
         output("original", "page.mhtml", content_type: "multipart/related"),
+        output("view", "page.html", content_type: "text/html"),
         output("screenshot", "page.png", content_type: "image/png"),
         output("rendition", "page.pdf", content_type: "application/pdf")
       ]

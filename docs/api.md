@@ -123,7 +123,7 @@ Newest first, at most 50. The URL is normalized before the lookup, so `?utm_sour
 
 | Method | What it keeps |
 |---|---|
-| `page` | the rendered page as MHTML, a full-page PNG, a print PDF |
+| `page` | the rendered page as MHTML, the same page as one HTML file (`view`, shown in Stash's viewer), a full-page PNG, a print PDF |
 | `github` | the repository record, README, releases, last 100 commits and contributors, from the GitHub API |
 | `git` | a mirror clone as a git bundle, and the list of refs |
 | `document` | the document as served (`.pptx`, `.docx`, `.pdf`, a Google export) and a PDF rendition |
