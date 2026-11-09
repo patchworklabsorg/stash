@@ -11,7 +11,8 @@
     </p>
 
     <% if Weave::Config.configured? %>
-      <%= button_to "Sign in with Weave", auth_weave_path, class: "mt-6 w-full rounded bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700" %>
+      <%# Turbo off: Turbo submits with fetch, and fetch cannot follow the redirect to Weave's origin. %>
+      <%= button_to "Sign in with Weave", auth_weave_path, form: { data: { turbo: false } }, class: "mt-6 w-full rounded bg-amber-600 px-4 py-2 font-medium text-white hover:bg-amber-700" %>
     <% else %>
       <p
         class="
