@@ -32,6 +32,9 @@ class ArtifactsController < ApplicationController
   def view
     @artifact = viewable_artifact
     @archive = @artifact.archive
+    # A parent's frame-src governs every navigation of its frames, the ones the frame starts
+    # too, so whatever the rewrite missed, the frame cannot leave Stash.
+    response.headers["Content-Security-Policy"] = "frame-src 'self'"
   end
 
   def frame

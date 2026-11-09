@@ -58,6 +58,11 @@ module Capturers
     # to the total. Fonts and images only; the MHTML already carries the HTML and the CSS.
     VIEW_RESOURCE_BYTES = 5.megabytes
     VIEW_RESOURCES_TOTAL = 60.megabytes
+    # No view for a page whose MHTML is larger than this: the view is the MHTML's resources
+    # as base64 and the frame loads the whole file into memory to serve it.
+    VIEW_MAX_MHTML_BYTES = 50.megabytes
+    # The largest canvas drawing kept; a page can make toDataURL answer anything.
+    VIEW_CANVAS_BYTES = 5.megabytes
     VIEW_TYPES = %r{\A(font/|image/|application/(x-)?font|application/vnd\.ms-fontobject)}
 
     private
@@ -198,11 +203,18 @@ module Capturers
     # and each <canvas> replaced by what was drawn on it. A view that cannot be made is logged
     # and skipped; the MHTML, PNG and PDF stand on their own.
     def write_view(page)
+      mhtml_bytes = ::File.size(path("page.mhtml"))
+      if mhtml_bytes > VIEW_MAX_MHTML_BYTES
+        log("no view: the MHTML is #{mhtml_bytes} bytes, more than #{VIEW_MAX_MHTML_BYTES}")
+        return
+      end
+
       html = Mhtml.inline(path("page.mhtml"), resources: view_resources(page), canvases: canvas_images(page))
       ::File.write(path("page.html"), html)
       log("view: #{html.bytesize} bytes as one HTML file")
-    rescue Error, Ferrum::Error => e
-      log("no view: #{e.message.to_s.first(200)}")
+    rescue StandardError => e
+      # Any failure here, a hostile stylesheet included, costs the view and nothing else.
+      log("no view: #{e.class}: #{e.message.to_s.first(200)}")
     end
 
     def view_resources(page)
@@ -215,7 +227,10 @@ module Capturers
         body = response.body
         next if body.nil? || body.bytesize > VIEW_RESOURCE_BYTES || (total += body.bytesize) > VIEW_RESOURCES_TOTAL
 
-        resources[response.url] = Mhtml::Part.new(location: response.url, content_type: response.content_type, body: body)
+        part = Mhtml::Part.new(location: response.url, content_type: response.content_type, body: body)
+        resources[response.url] = part
+        # The page names the URL it asked for; a redirect answers from another.
+        resources[exchange.request.url] ||= part if exchange.request && exchange.request.url != response.url
       rescue Ferrum::Error
         next
       end
@@ -224,11 +239,12 @@ module Capturers
     # What each canvas shows, as a PNG data URL, in document order; nil where it cannot be read
     # (a tainted canvas, or WebGL without a kept drawing buffer).
     def canvas_images(page)
-      Array(page.evaluate(<<~JS))
+      images = Array(page.evaluate(<<~JS))
         Array.from(document.querySelectorAll("canvas")).map((canvas) => {
           try { return canvas.width && canvas.height ? canvas.toDataURL("image/png") : null; } catch (_) { return null; }
         })
       JS
+      images.map { |data| data.is_a?(String) && data.start_with?("data:image/") && data.bytesize <= VIEW_CANVAS_BYTES ? data : nil }
     rescue Ferrum::Error
       []
     end

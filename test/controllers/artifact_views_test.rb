@@ -32,6 +32,7 @@ class ArtifactViewsTest < ActionDispatch::IntegrationTest
     assert_select "iframe[src=?][sandbox=?]", frame_artifact_path(@view), "allow-popups allow-popups-to-escape-sandbox"
     assert_select "a[href=?]", archive_path(@archive)
     assert_includes response.body, "Scripts do not run"
+    assert_equal "frame-src 'self'", response.headers["Content-Security-Policy"]
   end
 
   test "the frame serves the document inline with a policy that runs nothing" do
@@ -40,7 +41,7 @@ class ArtifactViewsTest < ActionDispatch::IntegrationTest
     get frame_artifact_path(@view)
 
     assert_response :success
-    assert_equal "text/html; charset=utf-8", response.media_type + "; charset=utf-8"
+    assert_equal "text/html; charset=utf-8", response.headers["Content-Type"]
     assert_includes response.body, "<h1>A story</h1>"
     csp = response.headers["Content-Security-Policy"]
     assert_includes csp, "default-src 'none'"
