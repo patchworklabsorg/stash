@@ -22,21 +22,16 @@ module Capturers
     SETTLE = 1.0
 
     def call
-      log("Chromium: loading #{url}")
-      with_browser do |browser|
-        page = browser.create_page
-        calm(page)
-        page.go_to(url)
-        wait_for_idle(page, "the page kept loading")
-        log("title: #{page.title.to_s.first(200)}")
-
-        reveal(page)
-        wait_for_idle(page, "images kept loading after the scroll")
-        self.class.sleep_for(SETTLE)
-
-        page.mhtml(path: path("page.mhtml"))
-        page.screenshot(path: path("page.png"), full: true)
-        page.pdf(path: path("page.pdf"), format: :A4, print_background: true)
+      @started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      attempts = 0
+      begin
+        attempts += 1
+        log("Chromium: loading #{url}#{" (second try)" if attempts > 1}")
+        with_browser { |browser| capture_in(browser) }
+      rescue Ferrum::DeadBrowserError => e
+        # A heavy page can take the renderer down once. One more try, in a new browser.
+        retry if attempts < 2
+        raise ToolFailed, "Chromium: #{e.class}: #{e.message.to_s.first(300)}"
       end
 
       [
@@ -49,6 +44,30 @@ module Capturers
     end
 
     private
+
+    def capture_in(browser)
+      page = browser.create_page
+      calm(page)
+      page.go_to(url)
+      wait_for_idle(page, "the page kept loading")
+      log("title: #{page.title.to_s.first(200)} (#{elapsed}s)")
+
+      reveal(page)
+      wait_for_idle(page, "images kept loading after the scroll")
+      self.class.sleep_for(SETTLE)
+
+      log("saving the MHTML (#{elapsed}s)")
+      page.mhtml(path: path("page.mhtml"))
+      log("saving the screenshot (#{elapsed}s)")
+      page.screenshot(path: path("page.png"), full: true)
+      log("saving the PDF (#{elapsed}s)")
+      page.pdf(path: path("page.pdf"), format: :A4, print_background: true)
+      log("done (#{elapsed}s)")
+    end
+
+    def elapsed
+      (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started).round(1)
+    end
 
     # Before the page loads: ask for reduced motion, so pages that honor it skip their
     # entrance animations, and run the ones that remain at 50x so they are over in time.
@@ -63,12 +82,7 @@ module Capturers
     # Walks down the page one viewport at a time, so observers fire and lazy images load,
     # then returns to the top. Waits for fonts first, so text does not reflow in the capture.
     def reveal(page)
-      begin
-        # evaluate waits for a returned promise.
-        page.evaluate("document.fonts.ready.then(() => true)")
-      rescue Ferrum::Error
-        log("fonts did not settle; continuing")
-      end
+      wait_for_fonts(page)
       height = page.evaluate("document.documentElement.scrollHeight").to_i
       step = VIEWPORT.last
       steps = [ (height.to_f / step).ceil, SCROLL_STEPS ].min
@@ -83,6 +97,18 @@ module Capturers
       log("page is #{final}px tall after the scroll") if final != height
     rescue Ferrum::Error => e
       log("the scroll stopped early: #{e.message.to_s.first(120)}")
+    end
+
+    # Up to five seconds for the web fonts, so text does not reflow between the files.
+    def wait_for_fonts(page)
+      20.times do
+        return if page.evaluate("document.fonts.status") == "loaded"
+
+        self.class.sleep_for(SCROLL_PAUSE)
+      end
+      log("fonts were still loading after 5 seconds; continuing")
+    rescue Ferrum::Error => e
+      log("could not wait for fonts: #{e.message.to_s.first(120)}")
     end
 
     def wait_for_idle(page, reason)
@@ -109,7 +135,12 @@ module Capturers
         process_timeout: 30,
         window_size: VIEWPORT,
         browser_path: ENV["BROWSER_PATH"].presence,
-        browser_options: { "no-sandbox" => nil, "disable-gpu" => nil, "disable-dev-shm-usage" => nil, "hide-scrollbars" => nil }
+        # SwiftShader draws WebGL in software, so a canvas site renders without a GPU. With
+        # disable-gpu instead, WebGL is off and such a page captures as a blank gradient.
+        browser_options: {
+          "no-sandbox" => nil, "disable-dev-shm-usage" => nil, "hide-scrollbars" => nil,
+          "use-angle" => "swiftshader", "enable-unsafe-swiftshader" => nil
+        }
       )
     end
   end

@@ -97,6 +97,8 @@ Many pages draw themselves as the reader scrolls: sections start at opacity 0 an
 3. Walks the page one viewport (900px) at a time, a quarter second per step, at most 60 steps, then returns to the top. Observers fire and lazy images load on the way.
 4. Waits for the network to go idle again, then one second for the last reveals.
 
+Chromium runs with SwiftShader (`--use-angle=swiftshader`), so WebGL draws in software and a canvas site renders without a GPU; with the GPU off, such a page captured as a blank gradient. A heavy page can take the renderer down once (`Ferrum::DeadBrowserError`); the capturer then tries once more in a new browser. The log notes the elapsed seconds at each step.
+
 Then the MHTML, the full-page PNG and the PDF are written from that state. The MHTML keeps the DOM as revealed, so the archived copy is not blank either. A page that pins sections to the scroll position (a scroll-driven hero) still looks like a long strip in the screenshot. That is the page as it is; the PDF and the MHTML keep the content.
 
 `bin/capture-sample <urls>` runs the capturers on a list of URLs without the database and writes an `index.html` with every screenshot and log, to check a change like this against real pages before it ships.

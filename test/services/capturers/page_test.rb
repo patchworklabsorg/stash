@@ -30,7 +30,11 @@ class Capturers::PageTest < ActiveSupport::TestCase
 
     def evaluate(script, **)
       @events << [ :evaluate, script ]
-      script.include?("scrollHeight") ? @height : true
+      case script
+      when /scrollHeight/ then @height
+      when /fonts.status/ then "loaded"
+      else true
+      end
     end
 
     def execute(script)
@@ -116,6 +120,22 @@ class Capturers::PageTest < ActiveSupport::TestCase
 
     assert_equal %w[original screenshot rendition], outputs.map(&:role)
     assert_equal %w[page.mhtml page.png page.pdf], outputs.map { |o| File.basename(o.path) }
+  end
+
+  test "tries once more in a new browser when the first one dies" do
+    dead = FakePage.new(height: 900)
+    dead.define_singleton_method(:go_to) { |_url| raise Ferrum::DeadBrowserError }
+    browsers = [ FakeBrowser.new(dead), FakeBrowser.new(FakePage.new(height: 900)) ]
+    outputs = nil
+    stub_method(Capturers::Page, :new_browser, -> { browsers.shift }) do
+      stub_method(Capturers::Page, :sleep_for, ->(_seconds) { }) do
+        outputs = Capturers::Page.new(@capture, @workdir).call
+      end
+    end
+
+    assert_equal 3, outputs.size
+    assert_empty browsers, "both browsers were used"
+    assert_includes @capture.log, "(second try)"
   end
 
   test "captures as is when the network never goes idle" do
